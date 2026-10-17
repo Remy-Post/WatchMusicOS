@@ -6,7 +6,7 @@ no phone, no network permission.
 
 | Swipe right ← | Home | → Swipe left |
 |---|---|---|
-| **Favorites**, newest first, grouped *Today / This week / This month / Earlier* | **Now playing**: cover-tinted background, progress ring around the bezel, ♥ to like | **Library**: Music and Podcasts folders, Favorites, Recently added, your own and preconfigured playlists |
+| **Favorites**, newest first, grouped *Today / This week / This month / Earlier* | **Now playing**: cover-tinted background, progress ring around the bezel, heart to like | **Library**: Music, Podcasts and Favorites folders, then the Juice WRLD playlist and your own |
 
 ## Features
 
