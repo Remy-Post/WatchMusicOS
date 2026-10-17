@@ -11,6 +11,7 @@ import androidx.media3.common.MediaMetadata
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.exoplayer.analytics.AnalyticsListener
 import androidx.media3.session.CommandButton
 import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSessionService
@@ -64,6 +65,14 @@ class PlaybackService : MediaSessionService() {
             .setSeekBackIncrementMs(10_000)
             .setSeekForwardIncrementMs(30_000)
             .build()
+
+        // Equalizer follows the player's audio session.
+        graph.equalizer.attach(player.audioSessionId)
+        player.addAnalyticsListener(object : AnalyticsListener {
+            override fun onAudioSessionIdChanged(eventTime: AnalyticsListener.EventTime, audioSessionId: Int) {
+                graph.equalizer.attach(audioSessionId)
+            }
+        })
 
         val openApp = PendingIntent.getActivity(
             this,
@@ -153,6 +162,7 @@ class PlaybackService : MediaSessionService() {
     override fun onDestroy() {
         saveSession()
         scope.cancel()
+        graph.equalizer.release()
         session?.run {
             player.release()
             release()

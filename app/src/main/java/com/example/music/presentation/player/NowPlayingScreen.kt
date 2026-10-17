@@ -27,6 +27,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -60,6 +62,8 @@ import androidx.wear.compose.material3.Text
 import com.example.music.appGraph
 import com.example.music.data.LibraryLogic
 import com.example.music.data.SmartList
+import com.example.music.data.Track
+import com.example.music.data.TrackSource
 import com.example.music.playback.NowPlayingState
 import com.example.music.playback.PlayerConnection
 import com.example.music.presentation.components.CoverBackground
@@ -96,6 +100,15 @@ fun NowPlayingScreen(
     val track = state.trackKey?.let { library.byKey[it] }
     val artwork = rememberArtwork(track, 320)
     val liked = state.trackKey != null && favorites.any { it.trackKey == state.trackKey }
+
+    // Short confirmation shown in place of the artist line ("Added to Favorites", …).
+    var notice by remember { mutableStateOf<String?>(null) }
+    LaunchedEffect(notice) {
+        if (notice != null) {
+            delay(1_800)
+            notice = null
+        }
+    }
 
     val focusRequester = remember { FocusRequester() }
     LaunchedEffect(isActivePage) { if (isActivePage) runCatching { focusRequester.requestFocus() } }
@@ -186,13 +199,14 @@ fun NowPlayingScreen(
                         )
                         Text(
                             text = when {
+                                notice != null -> notice!!
                                 state.hasMedia -> artist
                                 !library.hasSharedAccess && noMusic -> "Allow access to see your songs"
                                 noMusic -> "Add songs with Galaxy Wearable"
                                 else -> "Tap play to shuffle"
                             },
                             style = MaterialTheme.typography.bodyMedium,
-                            color = WatchColors.OnSurfaceVariant,
+                            color = if (notice != null) LocalAccent.current else WatchColors.OnSurfaceVariant,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                             textAlign = TextAlign.Center,
@@ -226,9 +240,20 @@ fun NowPlayingScreen(
             UtilityRow(
                 d = d,
                 liked = liked,
-                enabled = state.hasMedia,
                 onVolume = onOpenVolume,
-                onLike = { track?.let { graph.library.toggleFavorite(it) } },
+                onLike = {
+                    val key = state.trackKey
+                    notice = if (key == null) {
+                        "Play a song to add it"
+                    } else {
+                        // The library may still be scanning; the player knows enough to save it.
+                        val song = track ?: Track(
+                            key = key, uri = "", title = state.title, artist = state.artist, album = "",
+                            durationMs = 0, dateAddedMs = 0, folder = "", source = TrackSource.SHARED,
+                        )
+                        if (graph.library.toggleFavorite(song)) "Added to Favorites" else "Removed"
+                    }
+                },
                 onMore = onOpenOptions,
             )
         }
@@ -321,7 +346,6 @@ private fun TransportRow(
 private fun UtilityRow(
     d: Dp,
     liked: Boolean,
-    enabled: Boolean,
     onVolume: () -> Unit,
     onLike: () -> Unit,
     onMore: () -> Unit,
@@ -348,7 +372,6 @@ private fun UtilityRow(
                         pop.animateTo(1f, spring(dampingRatio = Spring.DampingRatioHighBouncy, stiffness = Spring.StiffnessMedium))
                     }
                 },
-                enabled = enabled,
                 modifier = Modifier
                     .size(small)
                     .semantics { contentDescription = if (liked) "Remove from Favorites" else "Add to Favorites" },
@@ -362,7 +385,7 @@ private fun UtilityRow(
                 )
             }
         }
-        IconButton(onClick = onMore, enabled = enabled, modifier = Modifier.size(small)) {
+        IconButton(onClick = onMore, modifier = Modifier.size(small)) {
             Icon(painterResource(Icons.More), "More options", tint = WatchColors.OnSurfaceVariant, modifier = Modifier.size(d * 0.1f))
         }
     }

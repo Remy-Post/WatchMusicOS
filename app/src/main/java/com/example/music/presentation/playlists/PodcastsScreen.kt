@@ -69,7 +69,7 @@ fun PodcastsScreen(
                     transformation = surface(),
                     colors = ButtonDefaults.filledTonalButtonColors(containerColor = WatchColors.Surface),
                     // The newest episode's cover stands in for the show's artwork.
-                    icon = { CoverThumb(show.episodes.firstOrNull(), 32.dp) },
+                    icon = { CoverThumb(show.episodes.firstOrNull(), 34.dp, monogram = show.name) },
                     secondaryLabel = {
                         Text(episodeCount(show.episodes.size), color = WatchColors.OnSurfaceVariant, maxLines = 1)
                     },

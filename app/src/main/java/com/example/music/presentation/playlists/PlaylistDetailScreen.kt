@@ -102,6 +102,8 @@ fun PlaylistDetailScreen(
                     title = track.title,
                     subtitle = if (track.isPodcast) episodeSubtitle(track, progress[track.key] ?: 0L) else track.artist,
                     isCurrent = track.key == now.trackKey,
+                    // Episode titles are long; give them two lines.
+                    titleLines = if (track.isPodcast) 2 else 1,
                     onClick = { play(index, shuffle = false) },
                     onLongClick = if (editable) ({ pendingRemoval = track }) else null,
                     modifier = Modifier.fillMaxWidth().morph(this@itemsIndexed),
@@ -116,7 +118,7 @@ fun PlaylistDetailScreen(
                 "empty",
                 when {
                     editable -> "This playlist is empty."
-                    smart == SmartList.FAVORITES -> "Tap ♥ on the player to add songs."
+                    smart == SmartList.FAVORITES -> "Tap the heart on the player to add songs."
                     else -> "No songs on the watch yet."
                 },
             )

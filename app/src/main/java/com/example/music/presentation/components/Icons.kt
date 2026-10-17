@@ -46,4 +46,5 @@ object Icons {
     @DrawableRes val Replay10 = Filled.drawable.materialsymbols_ic_replay_10_rounded_filled
     @DrawableRes val Forward30 = Filled.drawable.materialsymbols_ic_forward_30_rounded_filled
     @DrawableRes val Speed = Rounded.drawable.materialsymbols_ic_speed_rounded
+    @DrawableRes val Equalizer = Rounded.drawable.materialsymbols_ic_equalizer_rounded
 }

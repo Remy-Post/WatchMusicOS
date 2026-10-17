@@ -1,7 +1,10 @@
 package com.example.music.presentation.components
 
 import androidx.annotation.DrawableRes
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.size
@@ -113,6 +116,33 @@ fun TransformingLazyColumnScope.hint(transform: ListTransform, key: String, text
                 textAlign = TextAlign.Center,
                 modifier = Modifier.fillMaxWidth().morph(this@item),
             )
+        }
+    }
+}
+
+/** Empty state: a large icon over a short explanation. */
+fun TransformingLazyColumnScope.emptyState(
+    transform: ListTransform,
+    key: String,
+    @DrawableRes icon: Int,
+    text: String,
+    iconTint: Color = WatchColors.OnSurfaceVariant,
+) {
+    item(key = "empty:$key") {
+        with(transform) {
+            Column(
+                Modifier.fillMaxWidth().morph(this@item).padding(vertical = 8.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                Icon(painterResource(icon), contentDescription = null, tint = iconTint, modifier = Modifier.size(32.dp))
+                Spacer(Modifier.height(6.dp))
+                Text(
+                    text,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = WatchColors.OnSurfaceVariant,
+                    textAlign = TextAlign.Center,
+                )
+            }
         }
     }
 }

@@ -22,6 +22,7 @@ import com.example.music.data.SmartList
 import com.example.music.playback.PlayerConnection
 import com.example.music.presentation.components.rememberArtwork
 import com.example.music.presentation.favorites.FavoritesScreen
+import com.example.music.presentation.player.EqualizerScreen
 import com.example.music.presentation.player.NowPlayingScreen
 import com.example.music.presentation.player.PlayerOptionsScreen
 import com.example.music.presentation.player.QueueScreen
@@ -48,6 +49,7 @@ private object Routes {
     const val VOLUME = "volume"
     const val OPTIONS = "options"
     const val QUEUE = "queue"
+    const val EQUALIZER = "equalizer"
     const val PLAYLIST = "playlist/{id}"
     const val ADD_SONGS = "addSongs/{id}"
     const val ADD_TO_PLAYLIST = "addToPlaylist/{key}"
@@ -101,7 +103,12 @@ fun WatchMusicApp(
                         volumeViewModel = volumeViewModel,
                         onAddToPlaylist = { nav.navigate(Routes.addToPlaylist(it)) },
                         onOpenQueue = { nav.navigate(Routes.QUEUE) },
+                        onOpenEqualizer = { nav.navigate(Routes.EQUALIZER) },
+                        onPlayed = showPlayer,
                     )
+                }
+                composable(Routes.EQUALIZER) {
+                    EqualizerScreen()
                 }
                 composable(Routes.QUEUE) {
                     QueueScreen(player = player, onPlayed = showPlayer)

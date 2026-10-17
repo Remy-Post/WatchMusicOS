@@ -49,7 +49,11 @@ class TrackScanner(private val context: Context) {
             MediaStore.Audio.Media.DATA,
             MediaStore.Audio.Media.IS_PODCAST,
         )
-        val selection = "${MediaStore.Audio.Media.IS_MUSIC} != 0 OR ${MediaStore.Audio.Media.IS_PODCAST} != 0"
+        // Freshly copied files are listed before their tags are read (flags still NULL); count
+        // anything in Music/ or Podcasts/ so new songs appear right away.
+        val selection = "${MediaStore.Audio.Media.IS_MUSIC} != 0 OR ${MediaStore.Audio.Media.IS_PODCAST} != 0 OR " +
+            "(${MediaStore.Audio.Media.IS_MUSIC} IS NULL AND (${MediaStore.Audio.Media.RELATIVE_PATH} LIKE 'Music/%' OR " +
+            "${MediaStore.Audio.Media.RELATIVE_PATH} LIKE 'Podcasts/%'))"
         val tracks = ArrayList<Track>()
         context.contentResolver.query(collection, projection, selection, null, null)?.use { c ->
             val idCol = c.getColumnIndexOrThrow(MediaStore.Audio.Media._ID)
@@ -72,9 +76,9 @@ class TrackScanner(private val context: Context) {
                 tracks += Track(
                     key = "media:$relPath$name",
                     uri = ContentUris.withAppendedId(collection, id).toString(),
-                    title = c.getString(titleCol).cleanOr(name.substringBeforeLast('.'))
+                    title = LibraryLogic.completeTitle(c.getString(titleCol).cleanOr(name.substringBeforeLast('.')), name)
                         .let { if (podcast) LibraryLogic.episodeTitle(it) else it },
-                    artist = c.getString(artistCol).cleanOr(Track.UNKNOWN_ARTIST),
+                    artist = c.getString(artistCol).cleanOr(LibraryLogic.artistFromPath(relPath) ?: Track.UNKNOWN_ARTIST),
                     album = album,
                     durationMs = c.getLong(durationCol),
                     dateAddedMs = c.getLong(addedCol) * 1000,

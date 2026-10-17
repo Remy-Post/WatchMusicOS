@@ -92,6 +92,15 @@ class LibraryStoreTest {
     }
 
     @Test
+    fun `presets removed from the asset are removed from the watch, user playlists stay`() {
+        val s = store()
+        s.createPlaylist("Mine")
+        val juiceOnly = """{"playlists":[{"id":"preset-juice-wrld","name":"Juice WRLD","rules":{"artists":["Juice WRLD"]}}]}"""
+        val reloaded = store(juiceOnly)
+        assertEquals(listOf("Juice WRLD", "Mine"), reloaded.playlists.value.map { it.name })
+    }
+
+    @Test
     fun `user playlists persist edits`() {
         val s = store(presetJson = null)
         now = 100

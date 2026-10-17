@@ -27,7 +27,7 @@ import com.example.music.presentation.components.Icons
 import com.example.music.presentation.components.ListScaffold
 import com.example.music.presentation.components.TrackChip
 import com.example.music.presentation.components.header
-import com.example.music.presentation.components.hint
+import com.example.music.presentation.components.emptyState
 import com.example.music.presentation.components.sectionLabel
 import com.example.music.presentation.theme.WatchColors
 
@@ -64,7 +64,7 @@ fun FavoritesScreen(player: PlayerConnection, onPlayed: () -> Unit) {
     ) { t ->
         header(t, "Favorites", Icons.Heart, WatchColors.Heart)
         if (favorites.isEmpty()) {
-            hint(t, "empty", "No favorites yet.\nTap ♥ on the player to add the song here.")
+            emptyState(t, "favorites", Icons.HeartOutline, "No favorites yet. Tap the heart on the player to add a song here.", WatchColors.Heart)
         }
         groups.forEach { (group, favs) ->
             sectionLabel(t, group.name, group.label)

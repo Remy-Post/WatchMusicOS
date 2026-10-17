@@ -20,6 +20,7 @@ import java.util.Collections
 /** Album art plus the colors pulled from it. */
 class Artwork(
     val image: ImageBitmap,
+    val byteCount: Int,
     /** Bright color for the progress ring and highlights. */
     val accent: Color,
 )
@@ -32,8 +33,8 @@ class ArtworkLoader(
     private val context: Context,
     private val ioDispatcher: CoroutineDispatcher,
 ) {
-    private val cache = object : LruCache<String, Artwork>(12 * 1024 * 1024) {
-        override fun sizeOf(key: String, value: Artwork): Int = value.image.width * value.image.height * 4
+    private val cache = object : LruCache<String, Artwork>(8 * 1024 * 1024) {
+        override fun sizeOf(key: String, value: Artwork): Int = value.byteCount
     }
     private val missing: MutableSet<String> = Collections.synchronizedSet(HashSet())
 
@@ -49,7 +50,7 @@ class ArtworkLoader(
                 missing += key
                 null
             } else {
-                Artwork(bitmap.asImageBitmap(), accentOf(bitmap)).also { cache.put(key, it) }
+                Artwork(bitmap.asImageBitmap(), bitmap.allocationByteCount, accentOf(bitmap)).also { cache.put(key, it) }
             }
         }
     }
@@ -102,7 +103,11 @@ class ArtworkLoader(
         BitmapFactory.decodeByteArray(bytes, 0, bytes.size, bounds)
         var sample = 1
         while (bounds.outWidth / (sample * 2) >= target && bounds.outHeight / (sample * 2) >= target) sample *= 2
-        val opts = BitmapFactory.Options().apply { inSampleSize = sample }
+        // Covers are opaque: RGB_565 halves their memory on the 2 GB watch.
+        val opts = BitmapFactory.Options().apply {
+            inSampleSize = sample
+            inPreferredConfig = android.graphics.Bitmap.Config.RGB_565
+        }
         return BitmapFactory.decodeByteArray(bytes, 0, bytes.size, opts)
     }
 

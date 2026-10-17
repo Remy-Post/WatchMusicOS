@@ -96,6 +96,22 @@ object LibraryLogic {
     fun numberFromName(name: String): Int =
         Regex("""^(\d{1,4})\s*-""").find(name)?.groupValues?.get(1)?.toIntOrNull() ?: 0
 
+    /**
+     * Android's scanner sometimes falls back to the old ID3v1 tag, which cuts titles at 30
+     * characters. When the file name continues the cut title, use the file name instead.
+     */
+    fun completeTitle(title: String, fileName: String): String {
+        val stem = fileName.substringBeforeLast('.')
+        return if (title.length == 30 && stem.length > 30 && stem.startsWith(title)) stem else title
+    }
+
+    /** Artist folder for untagged songs: `Music/Juice WRLD/` → "Juice WRLD". Sync folders don't count. */
+    fun artistFromPath(relativePath: String): String? {
+        val parts = relativePath.split('/').filter { it.isNotBlank() }
+        val folder = parts.getOrNull(1)?.takeIf { parts.firstOrNull().equals("Music", ignoreCase = true) }
+        return folder?.takeIf { it !in setOf("GalaxyWearable", "Samsung", "Download", "Downloads") }
+    }
+
     /** "01 - 2026-09-14 - Title" → "Title": numbering and dates are shown separately. */
     fun episodeTitle(raw: String): String =
         raw.replace(Regex("""^\d{1,4}\s*-\s*"""), "")

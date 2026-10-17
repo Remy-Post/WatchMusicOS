@@ -41,6 +41,9 @@ fun PlaylistsScreen(
 
     val musicCount = remember(library.tracks) { library.tracks.count { !it.isPodcast } }
     val shows = remember(library.tracks) { LibraryLogic.podcastShows(library.tracks) }
+    val playlistCounts = remember(library, playlists) {
+        playlists.associate { it.id to LibraryLogic.resolve(it, library.byKey, library.tracks).size }
+    }
 
     val newPlaylist = rememberTextInput("Playlist name") { name ->
         val created = graph.library.createPlaylist(name)
@@ -54,7 +57,7 @@ fun PlaylistsScreen(
             }
         },
     ) { t ->
-        header(t, "Playlists", Icons.Queue)
+        header(t, "Library", Icons.Library)
 
         if (!library.hasSharedAccess) {
             item(key = "access") {
@@ -71,7 +74,8 @@ fun PlaylistsScreen(
             }
         }
 
-        // Library folders: one big Music folder, and Podcasts with a folder per show.
+        // Folders: one big Music folder, Podcasts with a folder per show, and Favorites,
+        // which every hearted song goes into (and leaves when un-hearted).
         item(key = SmartList.MUSIC.id) {
             with(t) {
                 NavChip(
@@ -96,23 +100,12 @@ fun PlaylistsScreen(
                 )
             }
         }
-        item(key = SmartList.RECENTLY_ADDED.id) {
-            with(t) {
-                NavChip(
-                    icon = Icons.Recent,
-                    title = SmartList.RECENTLY_ADDED.title,
-                    subtitle = songCount(LibraryLogic.recentlyAdded(library.tracks).size),
-                    onClick = { onOpenPlaylist(SmartList.RECENTLY_ADDED.id) },
-                    modifier = Modifier.fillMaxWidth().morph(this@item),
-                    transformation = surface(),
-                )
-            }
-        }
         item(key = SmartList.FAVORITES.id) {
             with(t) {
                 NavChip(
                     icon = Icons.Heart,
                     iconTint = WatchColors.Heart,
+                    // Favorites is a folder like Music and Podcasts.
                     title = SmartList.FAVORITES.title,
                     subtitle = songCount(favorites.count { it.trackKey in library.byKey }),
                     onClick = { onOpenPlaylist(SmartList.FAVORITES.id) },
@@ -122,9 +115,9 @@ fun PlaylistsScreen(
             }
         }
 
-        if (playlists.isNotEmpty()) sectionLabel(t, "mine", "My playlists")
+        sectionLabel(t, "mine", "Playlists")
         items(playlists, key = { it.id }) { playlist ->
-            val count = LibraryLogic.resolve(playlist, library.byKey, library.tracks).size
+            val count = playlistCounts[playlist.id] ?: 0
             with(t) {
                 NavChip(
                     icon = if (playlist.origin == PlaylistOrigin.PRESET) Icons.PlaylistPlay else Icons.Queue,
@@ -136,6 +129,6 @@ fun PlaylistsScreen(
                 )
             }
         }
-        if (playlists.isEmpty()) hint(t, "none", "Tap + to make a playlist")
+        if (playlists.isEmpty()) hint(t, "none", "Tap + below to make a playlist")
     }
 }

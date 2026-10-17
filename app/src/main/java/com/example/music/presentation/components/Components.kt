@@ -26,6 +26,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -91,9 +92,12 @@ fun CoverBackground(artwork: Artwork?, modifier: Modifier = Modifier, blur: Dp =
     }
 }
 
-/** Square cover thumbnail with rounded corners, or a music-note tile when there is no art. */
+/**
+ * Square cover thumbnail with rounded corners. Without embedded art it shows [monogram] (a show's
+ * initials on a color picked from its name) or a music-note tile.
+ */
 @Composable
-fun CoverThumb(track: Track?, size: Dp, modifier: Modifier = Modifier) {
+fun CoverThumb(track: Track?, size: Dp, modifier: Modifier = Modifier, monogram: String? = null) {
     val art = rememberArtwork(track, 128)
     Box(
         modifier.size(size).clip(RoundedCornerShape(size / 4)).background(WatchColors.SurfaceHigh),
@@ -101,6 +105,18 @@ fun CoverThumb(track: Track?, size: Dp, modifier: Modifier = Modifier) {
     ) {
         if (art != null) {
             Image(art.image, null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
+        } else if (monogram != null) {
+            val hue = (monogram.hashCode() and 0x7fffffff) % 360
+            Box(
+                Modifier.fillMaxSize().background(Color.hsl(hue.toFloat(), 0.45f, 0.32f)),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    initials(monogram),
+                    style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
+                    color = Color.White,
+                )
+            }
         } else {
             Icon(
                 painterResource(Icons.MusicNote),
@@ -124,6 +140,7 @@ fun TrackChip(
     isCurrent: Boolean = false,
     enabled: Boolean = true,
     transformation: SurfaceTransformation? = null,
+    titleLines: Int = 1,
     trailing: (@Composable () -> Unit)? = null,
 ) {
     Button(
@@ -142,7 +159,7 @@ fun TrackChip(
         label = {
             Text(
                 title,
-                maxLines = 1,
+                maxLines = titleLines,
                 overflow = TextOverflow.Ellipsis,
                 color = if (isCurrent) MaterialTheme.colorScheme.primary else WatchColors.OnSurface,
                 modifier = Modifier.weight(1f),
@@ -184,6 +201,11 @@ fun NavChip(
         label = { Text(title, maxLines = 1, overflow = TextOverflow.Ellipsis) },
     )
 }
+
+/** "Flow State with Harry Mack" -> "FS"; skips small words. */
+fun initials(name: String): String =
+    name.split(' ', '-', '&').filter { it.isNotBlank() && it.lowercase() !in setOf("the", "with", "and", "of", "a") }
+        .take(2).joinToString("") { it.first().uppercase() }.ifEmpty { name.take(1).uppercase() }
 
 fun songCount(n: Int): String = if (n == 1) "1 song" else "$n songs"
 

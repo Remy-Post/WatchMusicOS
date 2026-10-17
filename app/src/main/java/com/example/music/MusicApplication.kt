@@ -6,6 +6,7 @@ import com.example.music.data.ArtworkLoader
 import com.example.music.data.EpisodeProgressStore
 import com.example.music.data.LibraryStore
 import com.example.music.data.TrackRepository
+import com.example.music.playback.EqualizerController
 import com.example.music.playback.SessionStore
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -32,6 +33,7 @@ class AppGraph(context: Context) {
     val artwork = ArtworkLoader(context, Dispatchers.IO)
     val sessions = SessionStore(libraryDir)
     val progress = EpisodeProgressStore(libraryDir, scope, Dispatchers.IO)
+    val equalizer = EqualizerController(context)
 
     /** Name of what is playing ("Favorites", a playlist name, …), shown above the title. */
     val playbackContextTitle = MutableStateFlow("")

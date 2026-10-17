@@ -58,10 +58,17 @@ class LibraryStore(
             _favorites.value = readFavorites().sortedByDescending { it.likedAtMs }
             installedPresets = readInstalledPresets()
             var playlists = readPlaylists()
-            val presets = parsePresets(presetJson())
+            val presetSource = presetJson()
+            val presets = parsePresets(presetSource)
             val newPresets = presets.filter { it.id !in installedPresets }
-            if (newPresets.isNotEmpty()) {
-                playlists = playlists + newPresets
+            // Presets that were dropped from the app's asset are dropped from the watch too.
+            val retired = if (presetSource != null) {
+                playlists.filter { it.origin == PlaylistOrigin.PRESET && presets.none { p -> p.id == it.id } }
+            } else {
+                emptyList()
+            }
+            if (newPresets.isNotEmpty() || retired.isNotEmpty()) {
+                playlists = playlists - retired.toSet() + newPresets
                 installedPresets = installedPresets + newPresets.map { it.id }
                 writeNow(stateFile, stateToJson(installedPresets))
                 writeNow(playlistsFile, playlistsToJson(playlists))
