@@ -165,3 +165,38 @@ class LibraryStoreTest {
         assertEquals(listOf("t2", "t1"), groups.first().second.map { it.trackKey })
     }
 }
+
+class PodcastLogicTest {
+    private fun ep(name: String, show: String, folder: String = "Podcasts/$show/") = Track(
+        key = "media:$folder$name", uri = "", title = name, artist = show, album = show, durationMs = 0,
+        dateAddedMs = 0, folder = folder, source = TrackSource.SHARED, kind = TrackKind.PODCAST, show = show,
+        releaseDate = LibraryLogic.dateFromName(name), trackNumber = LibraryLogic.numberFromName(name),
+    )
+
+    @Test
+    fun `paths and names are parsed`() {
+        assertTrue(LibraryLogic.isPodcastPath("Podcasts/Huberman Lab/"))
+        assertFalse(LibraryLogic.isPodcastPath("Music/Juice WRLD/"))
+        assertEquals("Huberman Lab", LibraryLogic.showFromPath("Podcasts/Huberman Lab/"))
+        assertEquals("2026-09-14", LibraryLogic.dateFromName("01 - 2026-09-14 - The Art of True Happiness.m4a"))
+        assertEquals(7, LibraryLogic.numberFromName("07 - Title.mp3"))
+        assertEquals(0, LibraryLogic.numberFromName("19 Harsh Truths - Alex Hormozi - #610.mp3"))
+    }
+
+    @Test
+    fun `shows group episodes newest first and music excludes podcasts`() {
+        val song = Track("m", "", "Lucid Dreams", "Juice WRLD", "Goodbye", 0, 0, "Music/Juice WRLD/", TrackSource.SHARED)
+        val tracks = listOf(
+            ep("02 - 2026-09-07 - Mitochondria.m4a", "Huberman Lab"),
+            ep("01 - 2026-09-14 - Happiness.m4a", "Huberman Lab"),
+            ep("03 - Expenses.m4a", "Smart Money"),
+            ep("01 - Costs.m4a", "Smart Money"),
+            song,
+        )
+        val shows = LibraryLogic.podcastShows(tracks)
+        assertEquals(listOf("Huberman Lab", "Smart Money"), shows.map { it.name })
+        assertEquals(listOf("01 - 2026-09-14 - Happiness.m4a", "02 - 2026-09-07 - Mitochondria.m4a"), shows[0].episodes.map { it.title })
+        assertEquals(listOf("01 - Costs.m4a", "03 - Expenses.m4a"), shows[1].episodes.map { it.title })
+        assertEquals(listOf("m"), LibraryLogic.music(tracks).map { it.key })
+    }
+}

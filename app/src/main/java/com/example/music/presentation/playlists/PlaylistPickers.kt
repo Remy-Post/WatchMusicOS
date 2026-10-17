@@ -76,7 +76,7 @@ fun AddSongsScreen(playlistId: String) {
     val playlists by graph.library.playlists.collectAsStateWithLifecycle()
     val playlist = playlists.firstOrNull { it.id == playlistId } ?: return
     val inside = LibraryLogic.resolve(playlist, library.byKey, library.tracks).map { it.key }.toSet()
-    val all = LibraryLogic.allSongs(library.tracks)
+    val all = LibraryLogic.music(library.tracks)
 
     ListScaffold { t ->
         header(t, playlist.name)

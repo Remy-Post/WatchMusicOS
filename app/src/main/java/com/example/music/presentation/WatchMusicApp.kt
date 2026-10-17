@@ -18,6 +18,7 @@ import androidx.wear.compose.navigation.composable
 import androidx.wear.compose.navigation.rememberSwipeDismissableNavController
 import com.example.music.appGraph
 import com.example.music.data.ArtworkLoader
+import com.example.music.data.SmartList
 import com.example.music.playback.PlayerConnection
 import com.example.music.presentation.components.rememberArtwork
 import com.example.music.presentation.favorites.FavoritesScreen
@@ -28,6 +29,7 @@ import com.example.music.presentation.playlists.AddSongsScreen
 import com.example.music.presentation.playlists.AddToPlaylistScreen
 import com.example.music.presentation.playlists.PlaylistDetailScreen
 import com.example.music.presentation.playlists.PlaylistsScreen
+import com.example.music.presentation.playlists.PodcastsScreen
 import com.example.music.presentation.theme.MusicTheme
 import com.google.android.horologist.audio.ui.VolumeViewModel
 import com.google.android.horologist.audio.ui.material3.VolumeScreen
@@ -106,6 +108,14 @@ fun WatchMusicApp(
                 }
                 composable(Routes.PLAYLIST) { entry ->
                     val id = entry.arguments?.getString("id")?.let(Uri::decode).orEmpty()
+                    if (id == SmartList.PODCASTS.id) {
+                        PodcastsScreen(
+                            player = player,
+                            onOpenShow = { nav.navigate(Routes.playlist(it)) },
+                            onPlayed = showPlayer,
+                        )
+                        return@composable
+                    }
                     PlaylistDetailScreen(
                         playlistId = id,
                         player = player,

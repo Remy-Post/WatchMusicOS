@@ -186,3 +186,30 @@ fun NavChip(
 }
 
 fun songCount(n: Int): String = if (n == 1) "1 song" else "$n songs"
+
+fun episodeCount(n: Int): String = if (n == 1) "1 episode" else "$n episodes"
+
+fun showCount(n: Int): String = if (n == 1) "1 show" else "$n shows"
+
+/** "2h 36m" / "48m". */
+fun formatDuration(ms: Long): String {
+    val totalMin = (ms / 60_000).toInt()
+    return if (totalMin >= 60) "${totalMin / 60}h ${totalMin % 60}m" else "${totalMin.coerceAtLeast(1)}m"
+}
+
+/** Episode subtitle: "Sep 14 · 2h 36m", or how much is left when partly played. */
+fun episodeSubtitle(track: Track, resumeMs: Long): String {
+    val date = track.releaseDate?.let {
+        runCatching {
+            val day = java.time.LocalDate.parse(it)
+            val pattern = if (day.year == java.time.LocalDate.now().year) "MMM d" else "MMM d, yyyy"
+            day.format(java.time.format.DateTimeFormatter.ofPattern(pattern))
+        }.getOrNull()
+    }
+    val length = when {
+        resumeMs > 0 && track.durationMs > resumeMs -> formatDuration(track.durationMs - resumeMs) + " left"
+        track.durationMs > 0 -> formatDuration(track.durationMs)
+        else -> null
+    }
+    return listOfNotNull(date, length).joinToString(" · ").ifEmpty { track.show }
+}

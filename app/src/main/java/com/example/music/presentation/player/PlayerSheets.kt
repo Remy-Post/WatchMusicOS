@@ -33,6 +33,8 @@ fun PlayerOptionsScreen(
 ) {
     val state by player.state.collectAsStateWithLifecycle()
     val output by volumeViewModel.audioOutput.collectAsStateWithLifecycle()
+    val library by LocalContext.current.appGraph.tracks.state.collectAsStateWithLifecycle()
+    val isPodcast = state.trackKey?.let { library.byKey[it] }?.isPodcast == true
     val primary = MaterialTheme.colorScheme.primary
     val muted = MaterialTheme.colorScheme.onSurfaceVariant
 
@@ -72,6 +74,21 @@ fun PlayerOptionsScreen(
                     modifier = Modifier.fillMaxWidth().morph(this@item),
                     transformation = surface(),
                 )
+            }
+        }
+        if (isPodcast) {
+            item(key = "speed") {
+                with(t) {
+                    NavChip(
+                        icon = Icons.Speed,
+                        title = "Playback speed",
+                        subtitle = "${"%.2f".format(state.speed).trimEnd('0').trimEnd('.')}×",
+                        iconTint = if (state.speed != 1f) primary else muted,
+                        onClick = player::cycleSpeed,
+                        modifier = Modifier.fillMaxWidth().morph(this@item),
+                        transformation = surface(),
+                    )
+                }
             }
         }
         item(key = "playlist") {

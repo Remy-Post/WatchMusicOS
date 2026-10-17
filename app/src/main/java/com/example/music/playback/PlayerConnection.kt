@@ -27,6 +27,7 @@ data class NowPlayingState(
     val repeatMode: Int = Player.REPEAT_MODE_OFF,
     val index: Int = 0,
     val count: Int = 0,
+    val speed: Float = 1f,
 ) {
     val hasMedia: Boolean get() = trackKey != null
 }
@@ -79,6 +80,7 @@ class PlayerConnection(private val context: Context) {
             repeatMode = p.repeatMode,
             index = p.currentMediaItemIndex,
             count = p.mediaItemCount,
+            speed = p.playbackParameters.speed,
         )
     }
 
@@ -92,7 +94,10 @@ class PlayerConnection(private val context: Context) {
         if (tracks.isEmpty()) return
         context.appGraph.playbackContextTitle.value = contextTitle
         c.shuffleModeEnabled = shuffle
-        c.setMediaItems(tracks.map { it.toMediaItem() }, startIndex.coerceIn(0, tracks.lastIndex), 0L)
+        val start = startIndex.coerceIn(0, tracks.lastIndex)
+        // Episodes resume where they were left off.
+        val startPosition = tracks[start].takeIf { it.isPodcast }?.let { context.appGraph.progress.position(it.key) } ?: 0L
+        c.setMediaItems(tracks.map { it.toMediaItem() }, start, startPosition)
         c.prepare()
         c.play()
     }
@@ -114,6 +119,20 @@ class PlayerConnection(private val context: Context) {
     fun previous() = controller?.seekToPrevious() ?: Unit
 
     fun seekTo(positionMs: Long) = controller?.seekTo(positionMs) ?: Unit
+
+    /** Back 10 s (podcasts). */
+    fun skipBack() = controller?.seekBack() ?: Unit
+
+    /** Forward 30 s (podcasts). */
+    fun skipForward() = controller?.seekForward() ?: Unit
+
+    /** 1× → 1.25× → 1.5× → 2× → 1×. */
+    fun cycleSpeed() {
+        val c = controller ?: return
+        val speeds = listOf(1f, 1.25f, 1.5f, 2f)
+        val next = speeds.firstOrNull { it > c.playbackParameters.speed + 0.01f } ?: speeds.first()
+        c.setPlaybackSpeed(next)
+    }
 
     fun toggleShuffle() {
         val c = controller ?: return

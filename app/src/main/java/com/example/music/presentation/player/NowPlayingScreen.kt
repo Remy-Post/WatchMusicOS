@@ -1,5 +1,6 @@
 package com.example.music.presentation.player
 
+import androidx.annotation.DrawableRes
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
@@ -21,6 +22,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -140,7 +142,11 @@ fun NowPlayingScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Spacer(Modifier.height(d * 0.14f))
-            SourceLabel(if (state.hasMedia) contextTitle.ifBlank { "Watch" } else "Watch")
+            when {
+                track?.isPodcast == true -> SourceLabel("Podcasts", Icons.Podcasts, d)
+                state.hasMedia -> SourceLabel(contextTitle.ifBlank { "Watch" }, Icons.Watch, d)
+                else -> SourceLabel("Watch", Icons.Watch, d)
+            }
             Spacer(Modifier.height(d * 0.025f))
 
             val noMusic = library.hasScannedOnce && library.tracks.isEmpty()
@@ -194,18 +200,17 @@ fun NowPlayingScreen(
             TransportRow(
                 d = d,
                 state = state,
-                onPrevious = player::previous,
-                onNext = player::next,
+                isPodcast = track?.isPodcast == true,
+                onPrevious = { if (track?.isPodcast == true) player.skipBack() else player.previous() },
+                onNext = { if (track?.isPodcast == true) player.skipForward() else player.next() },
                 onPlayPause = {
                     when {
                         state.hasMedia -> player.togglePlayPause()
                         !library.hasSharedAccess && library.tracks.isEmpty() -> onRequestAccess()
-                        library.tracks.isNotEmpty() -> player.play(
-                            LibraryLogic.allSongs(library.tracks),
-                            startIndex = (library.tracks.indices).random(),
-                            contextTitle = SmartList.ALL_SONGS.title,
-                            shuffle = true,
-                        )
+                        library.tracks.isNotEmpty() -> {
+                            val songs = LibraryLogic.music(library.tracks).ifEmpty { library.tracks }
+                            player.play(songs, songs.indices.random(), SmartList.MUSIC.title, shuffle = true)
+                        }
                     }
                 },
             )
@@ -231,10 +236,10 @@ fun NowPlayingScreen(
 }
 
 @Composable
-private fun SourceLabel(text: String) {
-    Row(verticalAlignment = Alignment.CenterVertically) {
+private fun SourceLabel(text: String, @DrawableRes icon: Int, d: Dp) {
+    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.widthIn(max = d * 0.56f)) {
         Icon(
-            painterResource(Icons.Watch),
+            painterResource(icon),
             contentDescription = null,
             tint = WatchColors.OnSurfaceVariant,
             modifier = Modifier.size(13.dp),
@@ -254,6 +259,7 @@ private fun SourceLabel(text: String) {
 private fun TransportRow(
     d: Dp,
     state: NowPlayingState,
+    isPodcast: Boolean,
     onPrevious: () -> Unit,
     onNext: () -> Unit,
     onPlayPause: () -> Unit,
@@ -269,7 +275,11 @@ private fun TransportRow(
             modifier = Modifier.size(d * 0.2f),
             colors = IconButtonDefaults.iconButtonColors(contentColor = Color.White),
         ) {
-            Icon(painterResource(Icons.SkipPrevious), "Previous", modifier = Modifier.size(d * 0.14f))
+            Icon(
+                painterResource(if (isPodcast) Icons.Replay10 else Icons.SkipPrevious),
+                if (isPodcast) "Back 10 seconds" else "Previous",
+                modifier = Modifier.size(d * 0.14f),
+            )
         }
         FilledIconButton(
             onClick = { haptics.performHapticFeedback(HapticFeedbackType.ContextClick); onPlayPause() },
@@ -292,7 +302,11 @@ private fun TransportRow(
             modifier = Modifier.size(d * 0.2f),
             colors = IconButtonDefaults.iconButtonColors(contentColor = Color.White),
         ) {
-            Icon(painterResource(Icons.SkipNext), "Next", modifier = Modifier.size(d * 0.14f))
+            Icon(
+                painterResource(if (isPodcast) Icons.Forward30 else Icons.SkipNext),
+                if (isPodcast) "Forward 30 seconds" else "Next",
+                modifier = Modifier.size(d * 0.14f),
+            )
         }
     }
 }

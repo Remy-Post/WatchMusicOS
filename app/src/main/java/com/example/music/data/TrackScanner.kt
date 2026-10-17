@@ -14,8 +14,9 @@ import java.io.File
 /**
  * Finds every song on the watch:
  *
- * 1. The shared music library through MediaStore. This is where Galaxy Wearable puts tracks you
- *    send from the phone, and what Samsung's own Music app reads. Needs `READ_MEDIA_AUDIO`.
+ * 1. The shared music library through MediaStore: `Music/` (where Galaxy Wearable puts tracks
+ *    you send from the phone, and what Samsung's own Music app reads) and `Podcasts/`, one folder
+ *    per show. Needs `READ_MEDIA_AUDIO`.
  * 2. The app's own folder (`Android/data/<package>/files/Music`), walked directly. No permission
  *    needed; tags are read once and cached in `files/library/folder_index.json`.
  */
@@ -46,8 +47,9 @@ class TrackScanner(private val context: Context) {
             MediaStore.Audio.Media.DISPLAY_NAME,
             MediaStore.Audio.Media.CD_TRACK_NUMBER,
             MediaStore.Audio.Media.DATA,
+            MediaStore.Audio.Media.IS_PODCAST,
         )
-        val selection = "${MediaStore.Audio.Media.IS_MUSIC} != 0"
+        val selection = "${MediaStore.Audio.Media.IS_MUSIC} != 0 OR ${MediaStore.Audio.Media.IS_PODCAST} != 0"
         val tracks = ArrayList<Track>()
         context.contentResolver.query(collection, projection, selection, null, null)?.use { c ->
             val idCol = c.getColumnIndexOrThrow(MediaStore.Audio.Media._ID)
@@ -60,22 +62,30 @@ class TrackScanner(private val context: Context) {
             val nameCol = c.getColumnIndexOrThrow(MediaStore.Audio.Media.DISPLAY_NAME)
             val trackNoCol = c.getColumnIndexOrThrow(MediaStore.Audio.Media.CD_TRACK_NUMBER)
             val dataCol = c.getColumnIndexOrThrow(MediaStore.Audio.Media.DATA)
+            val podcastCol = c.getColumnIndexOrThrow(MediaStore.Audio.Media.IS_PODCAST)
             while (c.moveToNext()) {
                 val id = c.getLong(idCol)
                 val relPath = c.getString(pathCol).orEmpty()
                 val name = c.getString(nameCol).orEmpty()
+                val podcast = c.getInt(podcastCol) != 0 || LibraryLogic.isPodcastPath(relPath)
+                val album = c.getString(albumCol).cleanOr(Track.UNKNOWN_ALBUM)
                 tracks += Track(
                     key = "media:$relPath$name",
                     uri = ContentUris.withAppendedId(collection, id).toString(),
-                    title = c.getString(titleCol).cleanOr(name.substringBeforeLast('.')),
+                    title = c.getString(titleCol).cleanOr(name.substringBeforeLast('.'))
+                        .let { if (podcast) LibraryLogic.episodeTitle(it) else it },
                     artist = c.getString(artistCol).cleanOr(Track.UNKNOWN_ARTIST),
-                    album = c.getString(albumCol).cleanOr(Track.UNKNOWN_ALBUM),
+                    album = album,
                     durationMs = c.getLong(durationCol),
                     dateAddedMs = c.getLong(addedCol) * 1000,
                     folder = relPath,
                     source = TrackSource.SHARED,
                     filePath = c.getString(dataCol),
-                    trackNumber = parseTrackNumber(c.getString(trackNoCol)),
+                    trackNumber = parseTrackNumber(c.getString(trackNoCol)).takeIf { it > 0 }
+                        ?: LibraryLogic.numberFromName(name),
+                    kind = if (podcast) TrackKind.PODCAST else TrackKind.MUSIC,
+                    show = if (podcast) LibraryLogic.showFromPath(relPath) ?: album else "",
+                    releaseDate = if (podcast) LibraryLogic.dateFromName(name) else null,
                 )
             }
         }
@@ -96,18 +106,24 @@ class TrackScanner(private val context: Context) {
                 val entry = cache[rel]?.takeIf { it.optString("stamp") == stamp } ?: readTags(file, stamp)
                 fresh[rel] = entry
                 val folder = "Music/" + (rel.substringBeforeLast('/', "").let { if (it.isEmpty()) "" else "$it/" })
+                val podcast = LibraryLogic.isPodcastPath(folder)
+                val album = entry.optString("album").cleanOr(Track.UNKNOWN_ALBUM)
                 tracks += Track(
                     key = "file:$rel",
                     uri = Uri.fromFile(file).toString(),
-                    title = entry.optString("title").cleanOr(file.nameWithoutExtension),
+                    title = entry.optString("title").cleanOr(file.nameWithoutExtension)
+                        .let { if (podcast) LibraryLogic.episodeTitle(it) else it },
                     artist = entry.optString("artist").cleanOr(Track.UNKNOWN_ARTIST),
-                    album = entry.optString("album").cleanOr(Track.UNKNOWN_ALBUM),
+                    album = album,
                     durationMs = entry.optLong("duration"),
                     dateAddedMs = file.lastModified(),
                     folder = folder,
                     source = TrackSource.APP_FOLDER,
                     filePath = file.absolutePath,
-                    trackNumber = entry.optInt("track"),
+                    trackNumber = entry.optInt("track").takeIf { it > 0 } ?: LibraryLogic.numberFromName(file.name),
+                    kind = if (podcast) TrackKind.PODCAST else TrackKind.MUSIC,
+                    show = if (podcast) LibraryLogic.showFromPath(folder) ?: album else "",
+                    releaseDate = if (podcast) LibraryLogic.dateFromName(file.name) else null,
                 )
             }
         if (fresh.keys != cache.keys || fresh.any { (k, v) -> cache[k] !== v }) writeIndex(fresh)

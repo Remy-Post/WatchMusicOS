@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -23,6 +24,7 @@ import com.example.music.presentation.components.header
 import com.example.music.presentation.components.hint
 import com.example.music.presentation.components.rememberTextInput
 import com.example.music.presentation.components.sectionLabel
+import com.example.music.presentation.components.showCount
 import com.example.music.presentation.components.songCount
 import com.example.music.presentation.theme.WatchColors
 
@@ -36,6 +38,9 @@ fun PlaylistsScreen(
     val library by graph.tracks.state.collectAsStateWithLifecycle()
     val playlists by graph.library.playlists.collectAsStateWithLifecycle()
     val favorites by graph.library.favorites.collectAsStateWithLifecycle()
+
+    val musicCount = remember(library.tracks) { library.tracks.count { !it.isPodcast } }
+    val shows = remember(library.tracks) { LibraryLogic.podcastShows(library.tracks) }
 
     val newPlaylist = rememberTextInput("Playlist name") { name ->
         val created = graph.library.createPlaylist(name)
@@ -66,13 +71,26 @@ fun PlaylistsScreen(
             }
         }
 
-        item(key = SmartList.ALL_SONGS.id) {
+        // Library folders: one big Music folder, and Podcasts with a folder per show.
+        item(key = SmartList.MUSIC.id) {
             with(t) {
                 NavChip(
                     icon = Icons.Library,
-                    title = SmartList.ALL_SONGS.title,
-                    subtitle = songCount(library.tracks.size),
-                    onClick = { onOpenPlaylist(SmartList.ALL_SONGS.id) },
+                    title = SmartList.MUSIC.title,
+                    subtitle = songCount(musicCount),
+                    onClick = { onOpenPlaylist(SmartList.MUSIC.id) },
+                    modifier = Modifier.fillMaxWidth().morph(this@item),
+                    transformation = surface(),
+                )
+            }
+        }
+        item(key = SmartList.PODCASTS.id) {
+            with(t) {
+                NavChip(
+                    icon = Icons.Podcasts,
+                    title = SmartList.PODCASTS.title,
+                    subtitle = showCount(shows.size),
+                    onClick = { onOpenPlaylist(SmartList.PODCASTS.id) },
                     modifier = Modifier.fillMaxWidth().morph(this@item),
                     transformation = surface(),
                 )

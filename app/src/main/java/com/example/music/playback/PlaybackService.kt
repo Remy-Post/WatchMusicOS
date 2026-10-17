@@ -60,8 +60,9 @@ class PlaybackService : MediaSessionService() {
             )
             .setHandleAudioBecomingNoisy(true)
             .setWakeMode(C.WAKE_MODE_LOCAL)
+            // Podcast-style skips: back 10 s, forward 30 s.
             .setSeekBackIncrementMs(10_000)
-            .setSeekForwardIncrementMs(10_000)
+            .setSeekForwardIncrementMs(30_000)
             .build()
 
         val openApp = PendingIntent.getActivity(
@@ -90,6 +91,32 @@ class PlaybackService : MediaSessionService() {
                     saveSession()
                 }
                 if (events.contains(Player.EVENT_MEDIA_ITEM_TRANSITION)) updateHeart()
+            }
+
+            /** Remember where the episode we're leaving was; finished ones are cleared. */
+            override fun onPositionDiscontinuity(
+                oldPosition: Player.PositionInfo,
+                newPosition: Player.PositionInfo,
+                reason: Int,
+            ) {
+                val oldKey = oldPosition.mediaItem?.mediaId ?: return
+                if (oldKey == newPosition.mediaItem?.mediaId) return
+                val old = graph.tracks.track(oldKey) ?: return
+                if (!old.isPodcast) return
+                if (reason == Player.DISCONTINUITY_REASON_AUTO_TRANSITION) {
+                    graph.progress.clear(oldKey)
+                } else {
+                    graph.progress.save(oldKey, oldPosition.positionMs, old.durationMs)
+                }
+            }
+
+            /** Episodes pick up where they were left off. */
+            override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
+                val key = mediaItem?.mediaId ?: return
+                if (reason == Player.MEDIA_ITEM_TRANSITION_REASON_REPEAT) return
+                if (graph.tracks.track(key)?.isPodcast != true) return
+                val resume = graph.progress.position(key)
+                if (resume > 0 && player.currentPosition < 5_000) player.seekTo(resume)
             }
         })
 
@@ -159,6 +186,11 @@ class PlaybackService : MediaSessionService() {
     private fun saveSession() {
         val player = session?.player ?: return
         if (player.mediaItemCount == 0) return
+        player.currentMediaItem?.mediaId?.let { key ->
+            graph.tracks.track(key)?.takeIf { it.isPodcast }?.let {
+                graph.progress.save(key, player.currentPosition, player.duration.takeIf { d -> d > 0 } ?: it.durationMs)
+            }
+        }
         val queue = (0 until player.mediaItemCount).map { player.getMediaItemAt(it).mediaId }
         val snapshot = LastSession(
             queue = queue,
@@ -256,7 +288,7 @@ fun Track.toMediaItem(): MediaItem = MediaItem.Builder()
             .setDurationMs(durationMs.takeIf { it > 0 })
             .setIsPlayable(true)
             .setIsBrowsable(false)
-            .setMediaType(MediaMetadata.MEDIA_TYPE_MUSIC)
+            .setMediaType(if (isPodcast) MediaMetadata.MEDIA_TYPE_PODCAST_EPISODE else MediaMetadata.MEDIA_TYPE_MUSIC)
             .build(),
     )
     .build()

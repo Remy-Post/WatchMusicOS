@@ -3,6 +3,7 @@ package com.example.music
 import android.app.Application
 import android.content.Context
 import com.example.music.data.ArtworkLoader
+import com.example.music.data.EpisodeProgressStore
 import com.example.music.data.LibraryStore
 import com.example.music.data.TrackRepository
 import com.example.music.playback.SessionStore
@@ -30,12 +31,16 @@ class AppGraph(context: Context) {
     )
     val artwork = ArtworkLoader(context, Dispatchers.IO)
     val sessions = SessionStore(libraryDir)
+    val progress = EpisodeProgressStore(libraryDir, scope, Dispatchers.IO)
 
     /** Name of what is playing ("Favorites", a playlist name, …), shown above the title. */
     val playbackContextTitle = MutableStateFlow("")
 
     init {
-        scope.launch(Dispatchers.IO) { library.load() }
+        scope.launch(Dispatchers.IO) {
+            library.load()
+            progress.load()
+        }
         tracks.refresh()
     }
 }

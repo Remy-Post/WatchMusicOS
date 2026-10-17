@@ -42,4 +42,8 @@ object Icons {
     @DrawableRes val Folder = Rounded.drawable.materialsymbols_ic_folder_rounded
     @DrawableRes val Refresh = Rounded.drawable.materialsymbols_ic_refresh_rounded
     @DrawableRes val Unlock = Rounded.drawable.materialsymbols_ic_lock_open_rounded
+    @DrawableRes val Podcasts = Rounded.drawable.materialsymbols_ic_podcasts_rounded
+    @DrawableRes val Replay10 = Filled.drawable.materialsymbols_ic_replay_10_rounded_filled
+    @DrawableRes val Forward30 = Filled.drawable.materialsymbols_ic_forward_30_rounded_filled
+    @DrawableRes val Speed = Rounded.drawable.materialsymbols_ic_speed_rounded
 }

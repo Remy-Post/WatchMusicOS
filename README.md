@@ -6,7 +6,7 @@ no phone, no network permission.
 
 | Swipe right ← | Home | → Swipe left |
 |---|---|---|
-| **Favorites**, newest first, grouped *Today / This week / This month / Earlier* | **Now playing**: cover-tinted background, progress ring around the bezel, ♥ to like | **Playlists**: All songs, Recently added, Favorites, plus your own and preconfigured lists |
+| **Favorites**, newest first, grouped *Today / This week / This month / Earlier* | **Now playing**: cover-tinted background, progress ring around the bezel, ♥ to like | **Library**: Music and Podcasts folders, Favorites, Recently added, your own and preconfigured playlists |
 
 ## Features
 
@@ -16,6 +16,11 @@ no phone, no network permission.
 - **Cover-reflecting background.** Embedded album art (or `cover.jpg` / `folder.jpg` next to the
   file) is blurred behind the player. The accent color for the ring, highlights and the volume arc
   is taken from the cover.
+- **Music and Podcasts folders.** *Music* is one big folder with Shuffle on top and every song
+  below. *Podcasts* has Shuffle all on top and a folder per show. Each show lists its episodes
+  newest first, with dates and time left. Episodes resume where you left off. While one plays,
+  the player swaps previous/next for back 10 s / forward 30 s, and the options sheet adds
+  playback speed (1× to 2×).
 - **One-tap favorites.** The ♥ on the player saves the song to Favorites instantly, and the system
   media controls get the same heart button.
 - **Playlists.** Create them on the watch (keyboard, handwriting or voice), add/remove songs,
@@ -50,6 +55,36 @@ adb connect <watch-ip>:<port>
 ```
 
 ## Getting music onto the watch
+
+### From this Mac, sized to fit (recommended)
+
+[`tools/watch_sync.py`](tools/watch_sync.py) copies the Juice WRLD folder and the podcast
+folders from `~/Music` to the watch over Wi-Fi debugging. It never changes the originals.
+
+- **Music:** the audio is copied as-is. Tags are rewritten as ID3v2.3 and oversized embedded
+  covers are scaled to 600 px. Android's scanner otherwise drops artists and cuts titles at 30
+  characters, and the covers alone were half of some files.
+- **Podcasts:** episodes are re-encoded to mono AAC at 48 kbps (clear for speech, about ¼ of
+  the original size) and put in `Podcasts/<Show>/`, so the app files them under Podcasts.
+- **Fitting:** all the music goes first. Then podcasts are added round-robin, newest episode
+  of each show first, until the watch's free space (minus a 3 GB reserve) is used. Run it again
+  any time; files already on the watch are skipped.
+
+```bash
+python3 tools/watch_sync.py prepare
+```
+
+```bash
+python3 tools/watch_sync.py plan -s WATCH_IP:PORT
+```
+
+```bash
+python3 tools/watch_sync.py push -s WATCH_IP:PORT
+```
+
+Edit `MUSIC_FOLDERS` and `PODCAST_FOLDERS` at the top of the script to change what goes over.
+
+### Other ways
 
 Any of these work, and the app picks changes up automatically:
 
@@ -100,13 +135,13 @@ installed after an update). After that it behaves like any playlist made on the 
 ```
 app/src/main/java/com/example/music/
 ├─ MusicApplication.kt          app-wide object graph
-├─ data/                        Track scanning, artwork, favorites & playlists (JSON), pure logic
+├─ data/                        Track scanning, artwork, favorites, playlists, episode progress (JSON)
 ├─ playback/                    Media3 PlaybackService, MediaController wrapper, session restore
 └─ presentation/
    ├─ WatchMusicApp.kt          navigation + the three-page home pager
    ├─ player/                   Now playing, options, up next
    ├─ favorites/                Favorites page
-   ├─ playlists/                Playlists, playlist detail, pickers
+   ├─ playlists/                Library page, Music/show/playlist detail, Podcasts folder, pickers
    ├─ components/               Cover background, rows, list scaffold, icons, text input
    └─ theme/                    One UI Watch colors, cover-driven accent
 ```
