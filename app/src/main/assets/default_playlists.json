@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "_comment": "Preconfigured playlists, installed automatically the first time the app runs. Each one can list exact track keys under 'tracks' and/or 'rules' that pull matching songs in automatically: a folder name anywhere in the file's path, an artist, an album, or an exact title. After installation they behave like any other playlist on the watch: rename, add, remove, delete. Give each playlist a new 'id' when you add one, so it gets installed on the next launch.",
+  "playlists": [
+    {
+      "id": "preset-workout",
+      "name": "Workout",
+      "rules": { "folders": ["Workout", "Gym", "Running", "Run"] }
+    },
+    {
+      "id": "preset-chill",
+      "name": "Chill",
+      "rules": { "folders": ["Chill", "Relax", "Lofi", "Sleep"] }
+    },
+    {
+      "id": "preset-focus",
+      "name": "Focus",
+      "rules": { "folders": ["Focus", "Study", "Work"] }
+    }
+  ]
+}

@@ -1,0 +1,178 @@
+package com.example.music.presentation.playlists
+
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.size
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.wear.compose.foundation.lazy.itemsIndexed
+import androidx.wear.compose.material3.AlertDialog
+import androidx.wear.compose.material3.AlertDialogDefaults
+import androidx.wear.compose.material3.FilledIconButton
+import androidx.wear.compose.material3.FilledTonalIconButton
+import androidx.wear.compose.material3.Icon
+import androidx.wear.compose.material3.IconButtonDefaults
+import androidx.wear.compose.material3.Text
+import com.example.music.appGraph
+import com.example.music.data.LibraryLogic
+import com.example.music.data.SmartList
+import com.example.music.data.Track
+import com.example.music.playback.PlayerConnection
+import com.example.music.presentation.components.Icons
+import com.example.music.presentation.components.ListScaffold
+import com.example.music.presentation.components.NavChip
+import com.example.music.presentation.components.TrackChip
+import com.example.music.presentation.components.header
+import com.example.music.presentation.components.hint
+import com.example.music.presentation.components.rememberTextInput
+import com.example.music.presentation.components.songCount
+import com.example.music.presentation.theme.WatchColors
+
+/** Songs of one playlist or smart list, with play/shuffle and (for stored playlists) editing. */
+@Composable
+fun PlaylistDetailScreen(
+    playlistId: String,
+    player: PlayerConnection,
+    onPlayed: () -> Unit,
+    onAddSongs: (String) -> Unit,
+    onDeleted: () -> Unit,
+) {
+    val graph = LocalContext.current.appGraph
+    val library by graph.tracks.state.collectAsStateWithLifecycle()
+    val playlists by graph.library.playlists.collectAsStateWithLifecycle()
+    val favorites by graph.library.favorites.collectAsStateWithLifecycle()
+    val now by player.state.collectAsStateWithLifecycle()
+
+    val smart = SmartList.fromId(playlistId)
+    val playlist = playlists.firstOrNull { it.id == playlistId }
+    val title = smart?.title ?: playlist?.name ?: return
+    val tracks: List<Track> = when (smart) {
+        SmartList.ALL_SONGS -> LibraryLogic.allSongs(library.tracks)
+        SmartList.RECENTLY_ADDED -> LibraryLogic.recentlyAdded(library.tracks)
+        SmartList.FAVORITES -> favorites.mapNotNull { library.byKey[it.trackKey] }
+        null -> LibraryLogic.resolve(playlist!!, library.byKey, library.tracks)
+    }
+    val editable = playlist != null
+
+    var pendingRemoval by remember { mutableStateOf<Track?>(null) }
+    var confirmDelete by remember { mutableStateOf(false) }
+    val rename = rememberTextInput("Playlist name") { graph.library.renamePlaylist(playlistId, it) }
+
+    fun play(start: Int, shuffle: Boolean) {
+        if (tracks.isEmpty()) return
+        player.play(tracks, start, title, shuffle)
+        onPlayed()
+    }
+
+    ListScaffold { t ->
+        header(t, title)
+        hint(t, "count", songCount(tracks.size))
+
+        if (tracks.isNotEmpty()) {
+            item(key = "actions") {
+                with(t) {
+                    Row(
+                        Modifier.fillMaxWidth().morph(this@item),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
+                    ) {
+                        FilledIconButton(
+                            onClick = { play(0, shuffle = false) },
+                            modifier = Modifier.size(IconButtonDefaults.DefaultButtonSize),
+                        ) { Icon(painterResource(Icons.Play), "Play all") }
+                        FilledTonalIconButton(
+                            onClick = { play((tracks.indices).random(), shuffle = true) },
+                            modifier = Modifier.size(IconButtonDefaults.DefaultButtonSize),
+                        ) { Icon(painterResource(Icons.Shuffle), "Shuffle") }
+                    }
+                }
+            }
+        }
+
+        itemsIndexed(tracks, key = { _, track -> "track:" + track.key }) { index, track ->
+            with(t) {
+                TrackChip(
+                    track = track,
+                    title = track.title,
+                    subtitle = track.artist,
+                    isCurrent = track.key == now.trackKey,
+                    onClick = { play(index, shuffle = false) },
+                    onLongClick = if (editable) ({ pendingRemoval = track }) else null,
+                    modifier = Modifier.fillMaxWidth().morph(this@itemsIndexed),
+                    transformation = surface(),
+                )
+            }
+        }
+
+        if (tracks.isEmpty()) {
+            hint(
+                t,
+                "empty",
+                when {
+                    editable -> "This playlist is empty."
+                    smart == SmartList.FAVORITES -> "Tap ♥ on the player to add songs."
+                    else -> "No songs on the watch yet."
+                },
+            )
+        }
+
+        if (editable) {
+            item(key = "add") {
+                with(t) {
+                    NavChip(Icons.PlaylistAdd, "Add songs", null, { onAddSongs(playlistId) },
+                        Modifier.fillMaxWidth().morph(this@item), transformation = surface())
+                }
+            }
+            item(key = "rename") {
+                with(t) {
+                    NavChip(Icons.Edit, "Rename", null, rename,
+                        Modifier.fillMaxWidth().morph(this@item), transformation = surface())
+                }
+            }
+            item(key = "delete") {
+                with(t) {
+                    NavChip(Icons.Delete, "Delete playlist", null, { confirmDelete = true },
+                        Modifier.fillMaxWidth().morph(this@item), iconTint = WatchColors.Heart, transformation = surface())
+                }
+            }
+        }
+    }
+
+    AlertDialog(
+        visible = pendingRemoval != null,
+        onDismissRequest = { pendingRemoval = null },
+        icon = { Icon(painterResource(Icons.Remove), null) },
+        title = { Text("Remove from $title?") },
+        text = { Text(pendingRemoval?.title.orEmpty()) },
+        confirmButton = {
+            AlertDialogDefaults.ConfirmButton(onClick = {
+                pendingRemoval?.let { graph.library.removeFromPlaylist(playlistId, it.key) }
+                pendingRemoval = null
+            })
+        },
+    )
+
+    AlertDialog(
+        visible = confirmDelete,
+        onDismissRequest = { confirmDelete = false },
+        icon = { Icon(painterResource(Icons.Delete), null, tint = WatchColors.Heart) },
+        title = { Text("Delete $title?") },
+        text = { Text("Songs stay on your watch.") },
+        confirmButton = {
+            AlertDialogDefaults.ConfirmButton(onClick = {
+                confirmDelete = false
+                graph.library.deletePlaylist(playlistId)
+                onDeleted()
+            })
+        },
+    )
+}
