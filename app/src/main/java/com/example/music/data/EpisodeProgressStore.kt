@@ -12,7 +12,13 @@ import kotlinx.coroutines.sync.withLock
 import org.json.JSONObject
 import java.io.File
 
-/** Where each podcast episode was left off, so long episodes resume in place. `progress.json`. */
+/** Where an episode was left off, and when it was last played. */
+data class EpisodeProgress(val positionMs: Long, val updatedAtMs: Long)
+
+/**
+ * Where each podcast episode was left off, so long episodes resume in place even after music
+ * played in between. Stored in `progress.json`.
+ */
 class EpisodeProgressStore(
     private val dir: File,
     private val scope: CoroutineScope,
@@ -21,31 +27,42 @@ class EpisodeProgressStore(
     private val file = File(dir, "progress.json")
     private val writeMutex = Mutex()
 
-    private val _positions = MutableStateFlow<Map<String, Long>>(emptyMap())
-    val positions: StateFlow<Map<String, Long>> = _positions.asStateFlow()
+    private val _entries = MutableStateFlow<Map<String, EpisodeProgress>>(emptyMap())
+    val entries: StateFlow<Map<String, EpisodeProgress>> = _entries.asStateFlow()
 
     fun load() {
-        _positions.value = runCatching {
+        _entries.value = runCatching {
             if (!file.exists()) return@runCatching emptyMap()
             val o = JSONObject(file.readText())
-            o.keys().asSequence().associateWith { o.getLong(it) }
+            o.keys().asSequence().associateWith { key ->
+                // Older files stored only the position.
+                o.optJSONObject(key)?.let { EpisodeProgress(it.optLong("pos"), it.optLong("at")) }
+                    ?: EpisodeProgress(o.optLong(key), 0L)
+            }
         }.getOrDefault(emptyMap())
     }
 
-    fun position(key: String): Long = _positions.value[key] ?: 0L
+    fun position(key: String): Long = _entries.value[key]?.positionMs ?: 0L
+
+    /** Episodes started but not finished, most recently played first. */
+    fun inProgress(): List<Pair<String, EpisodeProgress>> =
+        _entries.value.entries.sortedByDescending { it.value.updatedAtMs }.map { it.key to it.value }
 
     /** Saves [positionMs] for an episode. Positions near the end count as finished and are cleared. */
     fun save(key: String, positionMs: Long, durationMs: Long) {
         val finished = durationMs > 0 && positionMs >= durationMs - FINISHED_MARGIN_MS
-        val value = if (finished || positionMs < MIN_RESUME_MS) null else positionMs
-        if (_positions.value[key] == value) return
-        _positions.update { if (value == null) it - key else it + (key to value) }
+        if (finished || positionMs < MIN_RESUME_MS) {
+            clear(key)
+            return
+        }
+        if (_entries.value[key]?.positionMs == positionMs) return
+        _entries.update { it + (key to EpisodeProgress(positionMs, System.currentTimeMillis())) }
         persist()
     }
 
     fun clear(key: String) {
-        if (key !in _positions.value) return
-        _positions.update { it - key }
+        if (key !in _entries.value) return
+        _entries.update { it - key }
         persist()
     }
 
@@ -53,7 +70,9 @@ class EpisodeProgressStore(
         scope.launch(ioDispatcher) {
             writeMutex.withLock {
                 dir.mkdirs()
-                val json = JSONObject().apply { _positions.value.forEach { (k, v) -> put(k, v) } }
+                val json = JSONObject().apply {
+                    _entries.value.forEach { (k, v) -> put(k, JSONObject().put("pos", v.positionMs).put("at", v.updatedAtMs)) }
+                }
                 val tmp = File(dir, file.name + ".tmp")
                 tmp.writeText(json.toString())
                 tmp.renameTo(file)

@@ -29,6 +29,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
@@ -100,6 +101,12 @@ class PlaybackService : MediaSessionService() {
                     saveSession()
                 }
                 if (events.contains(Player.EVENT_MEDIA_ITEM_TRANSITION)) updateHeart()
+                // "End of track" sleep timer fired: playback paused itself at the item boundary.
+                if (events.contains(Player.EVENT_PLAY_WHEN_READY_CHANGED) && !player.playWhenReady &&
+                    graph.sleepTimer.state.value.mode == SleepMode.END_OF_TRACK
+                ) {
+                    graph.sleepTimer.cancel()
+                }
             }
 
             /** Remember where the episode we're leaving was; finished ones are cleared. */
@@ -146,6 +153,18 @@ class PlaybackService : MediaSessionService() {
             player.shuffleModeEnabled = last.shuffle
             player.repeatMode = last.repeatMode
             player.setMediaItems(items, index, last.positionMs)
+        }
+
+        // Sleep timer: pause when the time is up, or at the end of the current track.
+        scope.launch {
+            graph.sleepTimer.state.collectLatest { timer ->
+                player.pauseAtEndOfMediaItems = timer.mode == SleepMode.END_OF_TRACK
+                if (timer.endsAtMs > 0) {
+                    delay((timer.endsAtMs - System.currentTimeMillis()).coerceAtLeast(0))
+                    player.pause()
+                    graph.sleepTimer.cancel()
+                }
+            }
         }
 
         // Remember the position while playing, so a reboot or a crash resumes in the right place.

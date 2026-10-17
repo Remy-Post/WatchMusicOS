@@ -92,11 +92,18 @@ class PlayerConnection(private val context: Context) {
     fun play(tracks: List<Track>, startIndex: Int, contextTitle: String, shuffle: Boolean = false) {
         val c = controller ?: return
         if (tracks.isEmpty()) return
-        context.appGraph.playbackContextTitle.value = contextTitle
+        val graph = context.appGraph
+        // Leaving an episode for something else: remember exactly where it was.
+        c.currentMediaItem?.mediaId?.let { key ->
+            graph.tracks.track(key)?.takeIf { it.isPodcast }?.let {
+                graph.progress.save(key, c.currentPosition, c.duration.takeIf { d -> d > 0 } ?: it.durationMs)
+            }
+        }
+        graph.playbackContextTitle.value = contextTitle
         c.shuffleModeEnabled = shuffle
         val start = startIndex.coerceIn(0, tracks.lastIndex)
         // Episodes resume where they were left off.
-        val startPosition = tracks[start].takeIf { it.isPodcast }?.let { context.appGraph.progress.position(it.key) } ?: 0L
+        val startPosition = tracks[start].takeIf { it.isPodcast }?.let { graph.progress.position(it.key) } ?: 0L
         c.setMediaItems(tracks.map { it.toMediaItem() }, start, startPosition)
         c.prepare()
         c.play()

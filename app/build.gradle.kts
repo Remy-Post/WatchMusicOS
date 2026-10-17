@@ -25,7 +25,7 @@ android {
             optimization {
                 enable = true
             }
-            // Material Symbols ships ~4k drawables; keep only the ones the app uses.
+            // The icon packs ship thousands of glyphs; keep only the ones the app uses.
             isShrinkResources = true
         }
     }
@@ -68,7 +68,7 @@ dependencies {
     implementation(libs.media3.session)
     implementation(libs.palette)
     implementation(libs.coroutines.android)
-    implementation(libs.material.symbols.rounded)
+    implementation(libs.phosphor.icons)
     implementation(libs.material.symbols.rounded.filled)
     implementation(libs.horologist.audio)
     implementation(libs.horologist.audio.ui.material3)

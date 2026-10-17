@@ -15,6 +15,7 @@ coroutines = "1.11.0"
 junit = "4.13.2"
 orgJson = "20260814"
 materialSymbols = "2.2.1"
+phosphor = "1.0.0"
 horologist = "0.8.4-alpha"
 
 [libraries]
@@ -41,7 +42,7 @@ media3-session = { group = "androidx.media3", name = "media3-session", version.r
 palette = { group = "androidx.palette", name = "palette-ktx", version.ref = "palette" }
 coroutines-android = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-android", version.ref = "coroutines" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }
-material-symbols-rounded = { group = "com.composables", name = "icons-material-symbols-rounded-android", version.ref = "materialSymbols" }
+phosphor-icons = { group = "com.adamglin", name = "phosphor-icon-android", version.ref = "phosphor" }
 material-symbols-rounded-filled = { group = "com.composables", name = "icons-material-symbols-rounded-filled-android", version.ref = "materialSymbols" }
 horologist-audio = { group = "com.google.android.horologist", name = "horologist-audio", version.ref = "horologist" }
 horologist-audio-ui-material3 = { group = "com.google.android.horologist", name = "horologist-audio-ui-material3", version.ref = "horologist" }

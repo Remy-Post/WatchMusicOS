@@ -6,7 +6,17 @@ no phone, no network permission.
 
 | Swipe right ← | Home | → Swipe left |
 |---|---|---|
-| **Favorites**, newest first, grouped *Today / This week / This month / Earlier* | **Now playing**: cover-tinted background, progress ring around the bezel, heart to like | **Library**: Music, Podcasts and Favorites folders, then the Juice WRLD playlist and your own |
+| **Favorites**, newest first, grouped *Today / This week / This month / Earlier* | **Now playing**: the title, previous / play / next, volume and heart over the blurred cover; progress around the bezel | **Library**: Music, Podcasts (a folder per show) and Playlists (Favorites, Juice WRLD, yours) |
+
+### Gestures on the player
+
+| Gesture | Does |
+|---|---|
+| Slide up/down along the left edge | Volume |
+| Slide up/down along the right edge | Screen brightness (for this app) |
+| Double-tap anywhere | Play / pause |
+| Tap the title | Now playing sheet: switch playlist, shuffle, repeat, speed, sleep timer, equalizer, up next, output |
+| Tap the icon above the title | Audio output: it shows the watch, earbuds, headphones or speaker you're playing through |
 
 ## Features
 
@@ -21,7 +31,10 @@ no phone, no network permission.
   newest first, with dates and time left. Episodes resume where you left off. While one plays,
   the player swaps previous/next for back 10 s / forward 30 s, and the options sheet adds
   playback speed (1× to 2×).
-- **Options sheet (⋯).** Switch playlist (Music, Juice WRLD and your playlists, Favorites,
+- **Continue listening.** Podcasts remembers where every episode stopped, even when you switch
+  to music and back, and lists unfinished episodes first with the time left.
+- **Sleep timer.** 15, 30 or 60 minutes, or the end of the current track.
+- **Now playing sheet.** Switch playlist (Music, Juice WRLD and your playlists, Favorites,
   Podcasts), shuffle, repeat, playback speed for podcasts, equalizer, add to playlist, up
   next and audio output. Works whether or not something is playing.
 - **Equalizer.** Android's built-in equalizer on the player, with presets (Flat, Bass boost,
@@ -158,7 +171,7 @@ app/src/main/java/com/example/music/
 | UI | Jetpack Compose for Wear OS, Material 3 (1.7) |
 | Playback & media session | AndroidX Media3 ExoPlayer + Session (1.11) |
 | Volume screen, bezel volume, output switcher | Google Horologist audio (0.8) |
-| Icons | Material Symbols Rounded via `com.composables` icon packages |
+| Icons | Phosphor (`com.adamglin:phosphor-icon-android`); Material Symbols for the earbuds and numbered skip glyphs Phosphor lacks |
 | Cover colors | AndroidX Palette |
 
 Unit tests cover favorites ordering and grouping, playlist rules, persistence and corrupt-file

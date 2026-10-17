@@ -35,7 +35,7 @@ fun EqualizerScreen() {
     val primary = MaterialTheme.colorScheme.primary
 
     ListScaffold { t ->
-        header(t, "Equalizer", Icons.Equalizer)
+        header(t, "Equalizer")
         if (!eq.supported) {
             hint(t, "unsupported", "Start playing a song to adjust the sound.")
             return@ListScaffold
@@ -58,10 +58,9 @@ fun EqualizerScreen() {
             val selected = eq.enabled && eq.preset == preset
             with(t) {
                 NavChip(
-                    icon = if (selected) Icons.Check else Icons.Equalizer,
                     title = preset.label,
                     subtitle = null,
-                    iconTint = if (selected) primary else WatchColors.OnSurfaceVariant,
+                    selected = selected,
                     onClick = { controller.applyPreset(preset) },
                     modifier = Modifier.fillMaxWidth().morph(this@items),
                     transformation = surface(),

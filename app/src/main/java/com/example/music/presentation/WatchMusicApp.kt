@@ -1,7 +1,14 @@
 package com.example.music.presentation
 
 import android.net.Uri
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.platform.LocalContext
@@ -12,6 +19,7 @@ import androidx.wear.compose.foundation.pager.PagerState
 import androidx.wear.compose.foundation.pager.rememberPagerState
 import androidx.wear.compose.material3.AnimatedPage
 import androidx.wear.compose.material3.AppScaffold
+import androidx.wear.compose.material3.HorizontalPageIndicator
 import androidx.wear.compose.material3.HorizontalPagerScaffold
 import androidx.wear.compose.navigation.SwipeDismissableNavHost
 import androidx.wear.compose.navigation.composable
@@ -23,17 +31,21 @@ import com.example.music.playback.PlayerConnection
 import com.example.music.presentation.components.rememberArtwork
 import com.example.music.presentation.favorites.FavoritesScreen
 import com.example.music.presentation.player.EqualizerScreen
+import com.example.music.presentation.player.BrightnessController
 import com.example.music.presentation.player.NowPlayingScreen
 import com.example.music.presentation.player.PlayerOptionsScreen
 import com.example.music.presentation.player.QueueScreen
 import com.example.music.presentation.playlists.AddSongsScreen
 import com.example.music.presentation.playlists.AddToPlaylistScreen
 import com.example.music.presentation.playlists.PlaylistDetailScreen
-import com.example.music.presentation.playlists.PlaylistsScreen
+import com.example.music.presentation.playlists.LibraryScreen
+import com.example.music.presentation.playlists.PLAYLISTS_FOLDER_ID
+import com.example.music.presentation.playlists.PlaylistsFolderScreen
 import com.example.music.presentation.playlists.PodcastsScreen
 import com.example.music.presentation.theme.MusicTheme
 import com.google.android.horologist.audio.ui.VolumeViewModel
 import com.google.android.horologist.audio.ui.material3.VolumeScreen
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 /** Home pager pages, left to right. The app opens on the player in the middle. */
@@ -63,6 +75,7 @@ private object Routes {
 fun WatchMusicApp(
     player: PlayerConnection,
     volumeViewModel: VolumeViewModel,
+    brightness: BrightnessController,
     onRequestAccess: () -> Unit,
 ) {
     val graph = LocalContext.current.appGraph
@@ -89,6 +102,7 @@ fun WatchMusicApp(
                         pager = pager,
                         player = player,
                         volumeViewModel = volumeViewModel,
+                        brightness = brightness,
                         nav = nav,
                         showPlayer = showPlayer,
                         onRequestAccess = onRequestAccess,
@@ -115,6 +129,10 @@ fun WatchMusicApp(
                 }
                 composable(Routes.PLAYLIST) { entry ->
                     val id = entry.arguments?.getString("id")?.let(Uri::decode).orEmpty()
+                    if (id == PLAYLISTS_FOLDER_ID) {
+                        PlaylistsFolderScreen(onOpenPlaylist = { nav.navigate(Routes.playlist(it)) })
+                        return@composable
+                    }
                     if (id == SmartList.PODCASTS.id) {
                         PodcastsScreen(
                             player = player,
@@ -150,11 +168,29 @@ private fun HomePager(
     pager: PagerState,
     player: PlayerConnection,
     volumeViewModel: VolumeViewModel,
+    brightness: BrightnessController,
     nav: NavHostController,
     showPlayer: () -> Unit,
     onRequestAccess: () -> Unit,
 ) {
-    HorizontalPagerScaffold(pagerState = pager) {
+    // Page dots only while swiping between pages; otherwise the screen stays clean.
+    var dotsVisible by remember { mutableStateOf(false) }
+    LaunchedEffect(pager.isScrollInProgress) {
+        if (pager.isScrollInProgress) {
+            dotsVisible = true
+        } else {
+            delay(900)
+            dotsVisible = false
+        }
+    }
+    HorizontalPagerScaffold(
+        pagerState = pager,
+        pageIndicator = {
+            AnimatedVisibility(dotsVisible, enter = fadeIn(), exit = fadeOut()) {
+                HorizontalPageIndicator(pager)
+            }
+        },
+    ) {
         HorizontalPager(state = pager) { page ->
             AnimatedPage(pageIndex = page, pagerState = pager) {
                 when (page) {
@@ -162,14 +198,15 @@ private fun HomePager(
                     HomePage.PLAYER -> NowPlayingScreen(
                         player = player,
                         volumeViewModel = volumeViewModel,
+                        brightness = brightness,
                         isActivePage = pager.currentPage == HomePage.PLAYER,
                         onOpenVolume = { nav.navigate(Routes.VOLUME) },
                         onOpenOptions = { nav.navigate(Routes.OPTIONS) },
-                        onOpenQueue = { nav.navigate(Routes.QUEUE) },
                         onRequestAccess = onRequestAccess,
                     )
-                    HomePage.PLAYLISTS -> PlaylistsScreen(
-                        onOpenPlaylist = { nav.navigate(Routes.playlist(it)) },
+                    HomePage.PLAYLISTS -> LibraryScreen(
+                        player = player,
+                        onOpen = { nav.navigate(Routes.playlist(it)) },
                         onRequestAccess = onRequestAccess,
                     )
                 }

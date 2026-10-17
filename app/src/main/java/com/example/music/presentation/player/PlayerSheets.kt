@@ -5,6 +5,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -18,23 +19,27 @@ import com.example.music.data.LibraryLogic
 import com.example.music.data.SmartList
 import com.example.music.data.Track
 import com.example.music.playback.PlayerConnection
+import com.example.music.playback.SleepMode
 import com.example.music.presentation.components.Icons
 import com.example.music.presentation.components.ListScaffold
 import com.example.music.presentation.components.NavChip
 import com.example.music.presentation.components.TrackChip
-import com.example.music.presentation.components.header
 import com.example.music.presentation.components.episodeCount
+import com.example.music.presentation.components.header
 import com.example.music.presentation.components.hint
 import com.example.music.presentation.components.sectionLabel
 import com.example.music.presentation.components.songCount
 import com.example.music.presentation.theme.WatchColors
 import com.google.android.horologist.audio.AudioOutput
 import com.google.android.horologist.audio.ui.VolumeViewModel
+import kotlinx.coroutines.delay
+
+/** One "Switch playlist" choice. */
+private data class Source(val title: String, val tracks: List<Track>, val shuffle: Boolean, val countLabel: String)
 
 /**
- * "More" from the player: switch to another playlist, then playback controls (shuffle, repeat,
- * speed for podcasts, equalizer), add to playlist, up next and audio output. Works with or
- * without something playing.
+ * The Now playing sheet (tap the title on the player): switch playlist first, then playback
+ * controls. Works whether or not something is playing.
  */
 @Composable
 fun PlayerOptionsScreen(
@@ -52,56 +57,61 @@ fun PlayerOptionsScreen(
     val playlists by graph.library.playlists.collectAsStateWithLifecycle()
     val favorites by graph.library.favorites.collectAsStateWithLifecycle()
     val eq by graph.equalizer.state.collectAsStateWithLifecycle()
+    val sleep by graph.sleepTimer.state.collectAsStateWithLifecycle()
     val contextTitle by graph.playbackContextTitle.collectAsStateWithLifecycle()
     val isPodcast = state.trackKey?.let { library.byKey[it] }?.isPodcast == true
-    val primary = MaterialTheme.colorScheme.primary
-    val muted = MaterialTheme.colorScheme.onSurfaceVariant
+    val accent = MaterialTheme.colorScheme.primary
+    val muted = WatchColors.OnSurfaceVariant
 
-    val music = remember(library.tracks) { LibraryLogic.music(library.tracks) }
-    val episodes = remember(library.tracks) { LibraryLogic.podcastShows(library.tracks).flatMap { it.episodes } }
-    val favoriteTracks = remember(library, favorites) { favorites.mapNotNull { library.byKey[it.trackKey] } }
-    val resolved = remember(library, playlists) {
-        playlists.map { it to LibraryLogic.resolve(it, library.byKey, library.tracks) }
+    val sources = remember(library, playlists, favorites) {
+        val music = LibraryLogic.music(library.tracks)
+        val episodes = LibraryLogic.podcastShows(library.tracks).flatMap { it.episodes }
+        buildList {
+            add(Source(SmartList.MUSIC.title, music, true, songCount(music.size)))
+            playlists.forEach { p ->
+                val tracks = LibraryLogic.resolve(p, library.byKey, library.tracks)
+                add(Source(p.name, tracks, false, songCount(tracks.size)))
+            }
+            val favs = favorites.mapNotNull { library.byKey[it.trackKey] }
+            add(Source(SmartList.FAVORITES.title, favs, false, songCount(favs.size)))
+            add(Source(SmartList.PODCASTS.title, episodes, true, episodeCount(episodes.size)))
+        }
     }
-
-    fun start(tracks: List<Track>, title: String, shuffle: Boolean) {
-        if (tracks.isEmpty()) return
-        player.play(tracks, if (shuffle) tracks.indices.random() else 0, title, shuffle)
-        onPlayed()
+    // Refresh the sleep timer's minutes-left while the sheet is open.
+    val now by produceState(System.currentTimeMillis(), sleep) {
+        while (true) {
+            value = System.currentTimeMillis()
+            delay(15_000)
+        }
     }
 
     ListScaffold { t ->
         header(t, if (state.hasMedia) "Now playing" else "Options")
         if (state.title.isNotBlank()) hint(t, "title", state.title)
 
-        // Switch playlist: the current one is marked with a check.
         sectionLabel(t, "switch", "Switch playlist")
-        val sources = buildList {
-            add(Triple(SmartList.MUSIC.title, Icons.Library, music to true))
-            resolved.forEach { (p, tracks) -> add(Triple(p.name, Icons.PlaylistPlay, tracks to false)) }
-            add(Triple(SmartList.FAVORITES.title, Icons.Heart, favoriteTracks to false))
-            add(Triple(SmartList.PODCASTS.title, Icons.Podcasts, episodes to true))
-        }
-        sources.forEach { (title, icon, payload) ->
-            val (tracks, shuffle) = payload
-            val current = state.hasMedia && contextTitle == title
-            item(key = "src:$title") {
+        sources.forEach { source ->
+            val current = state.hasMedia && contextTitle == source.title
+            item(key = "src:" + source.title) {
                 with(t) {
                     NavChip(
-                        icon = if (current) Icons.Check else icon,
-                        title = title,
+                        title = source.title,
                         subtitle = when {
                             current -> "Playing"
-                            tracks.isEmpty() -> "Empty"
-                            shuffle -> "Shuffle " + if (title == SmartList.PODCASTS.title) episodeCount(tracks.size) else songCount(tracks.size)
-                            else -> songCount(tracks.size)
+                            source.tracks.isEmpty() -> "Empty"
+                            source.shuffle -> "Shuffle " + source.countLabel
+                            else -> source.countLabel
                         },
-                        iconTint = when {
-                            current -> primary
-                            title == SmartList.FAVORITES.title -> WatchColors.Heart
-                            else -> muted
+                        cover = source.tracks.firstOrNull(),
+                        coverMonogram = source.title,
+                        selected = current,
+                        onClick = {
+                            if (source.tracks.isNotEmpty()) {
+                                val start = if (source.shuffle) source.tracks.indices.random() else 0
+                                player.play(source.tracks, start, source.title, source.shuffle)
+                                onPlayed()
+                            }
                         },
-                        onClick = { start(tracks, title, shuffle) },
                         modifier = Modifier.fillMaxWidth().morph(this@item),
                         transformation = surface(),
                     )
@@ -113,10 +123,10 @@ fun PlayerOptionsScreen(
         item(key = "shuffle") {
             with(t) {
                 NavChip(
-                    icon = if (state.shuffle) Icons.ShuffleOn else Icons.Shuffle,
                     title = "Shuffle",
                     subtitle = if (state.shuffle) "On" else "Off",
-                    iconTint = if (state.shuffle) primary else muted,
+                    icon = Icons.Shuffle,
+                    iconTint = if (state.shuffle) accent else muted,
                     onClick = player::toggleShuffle,
                     modifier = Modifier.fillMaxWidth().morph(this@item),
                     transformation = surface(),
@@ -126,18 +136,14 @@ fun PlayerOptionsScreen(
         item(key = "repeat") {
             with(t) {
                 NavChip(
-                    icon = when (state.repeatMode) {
-                        Player.REPEAT_MODE_ONE -> Icons.RepeatOneOn
-                        Player.REPEAT_MODE_ALL -> Icons.RepeatOn
-                        else -> Icons.Repeat
-                    },
                     title = "Repeat",
                     subtitle = when (state.repeatMode) {
-                        Player.REPEAT_MODE_ONE -> "Current song"
-                        Player.REPEAT_MODE_ALL -> "All songs"
+                        Player.REPEAT_MODE_ONE -> "This song"
+                        Player.REPEAT_MODE_ALL -> "All"
                         else -> "Off"
                     },
-                    iconTint = if (state.repeatMode != Player.REPEAT_MODE_OFF) primary else muted,
+                    icon = if (state.repeatMode == Player.REPEAT_MODE_ONE) Icons.RepeatOne else Icons.Repeat,
+                    iconTint = if (state.repeatMode != Player.REPEAT_MODE_OFF) accent else muted,
                     onClick = player::cycleRepeat,
                     modifier = Modifier.fillMaxWidth().morph(this@item),
                     transformation = surface(),
@@ -148,10 +154,10 @@ fun PlayerOptionsScreen(
             item(key = "speed") {
                 with(t) {
                     NavChip(
-                        icon = Icons.Speed,
-                        title = "Playback speed",
+                        title = "Speed",
                         subtitle = "${"%.2f".format(state.speed).trimEnd('0').trimEnd('.')}x",
-                        iconTint = if (state.speed != 1f) primary else muted,
+                        icon = Icons.Speed,
+                        iconTint = if (state.speed != 1f) accent else muted,
                         onClick = player::cycleSpeed,
                         modifier = Modifier.fillMaxWidth().morph(this@item),
                         transformation = surface(),
@@ -159,13 +165,26 @@ fun PlayerOptionsScreen(
                 }
             }
         }
+        item(key = "sleep") {
+            with(t) {
+                NavChip(
+                    title = "Sleep timer",
+                    subtitle = graph.sleepTimer.describe(sleep, now),
+                    icon = Icons.SleepTimer,
+                    iconTint = if (sleep.mode != SleepMode.OFF) accent else muted,
+                    onClick = graph.sleepTimer::cycle,
+                    modifier = Modifier.fillMaxWidth().morph(this@item),
+                    transformation = surface(),
+                )
+            }
+        }
         item(key = "eq") {
             with(t) {
                 NavChip(
-                    icon = Icons.Equalizer,
                     title = "Equalizer",
                     subtitle = if (eq.enabled) eq.preset.label else "Off",
-                    iconTint = if (eq.enabled) primary else muted,
+                    icon = Icons.Equalizer,
+                    iconTint = if (eq.enabled) accent else muted,
                     onClick = onOpenEqualizer,
                     modifier = Modifier.fillMaxWidth().morph(this@item),
                     transformation = surface(),
@@ -176,9 +195,9 @@ fun PlayerOptionsScreen(
             item(key = "playlist") {
                 with(t) {
                     NavChip(
-                        icon = Icons.PlaylistAdd,
                         title = "Add to playlist",
                         subtitle = null,
+                        icon = Icons.PlaylistAdd,
                         onClick = { state.trackKey?.let(onAddToPlaylist) },
                         modifier = Modifier.fillMaxWidth().morph(this@item),
                         transformation = surface(),
@@ -188,9 +207,9 @@ fun PlayerOptionsScreen(
             item(key = "queue") {
                 with(t) {
                     NavChip(
-                        icon = Icons.Queue,
                         title = "Up next",
                         subtitle = if (state.count > 0) "${state.index + 1} of ${state.count}" else null,
+                        icon = Icons.Queue,
                         onClick = onOpenQueue,
                         modifier = Modifier.fillMaxWidth().morph(this@item),
                         transformation = surface(),
@@ -200,13 +219,16 @@ fun PlayerOptionsScreen(
         }
         item(key = "output") {
             with(t) {
+                // Android names the device's own speaker "Phone", even on a watch.
+                val kind = OutputKind.of(output is AudioOutput.WatchSpeaker || output is AudioOutput.None, output.name)
                 NavChip(
-                    icon = Icons.Headphones,
                     title = "Audio output",
-                    // Android names the device's own speaker "Phone", even on a watch.
-                    subtitle = when {
-                        output is AudioOutput.WatchSpeaker || output.name == "Phone" -> "Watch speaker"
-                        else -> output.name.ifBlank { null }
+                    subtitle = if (kind == OutputKind.WATCH) "Watch speaker" else output.name,
+                    icon = when (kind) {
+                        OutputKind.WATCH -> Icons.Watch
+                        OutputKind.EARBUDS -> Icons.Earbuds
+                        OutputKind.HEADPHONES -> Icons.Headphones
+                        OutputKind.SPEAKER -> Icons.Speaker
                     },
                     onClick = { volumeViewModel.launchOutputSelection() },
                     modifier = Modifier.fillMaxWidth().morph(this@item),
@@ -227,7 +249,7 @@ fun QueueScreen(player: PlayerConnection, onPlayed: () -> Unit) {
     LaunchedEffect(state.count, state.shuffle) { keys = player.queueKeys() }
 
     ListScaffold { t ->
-        header(t, "Up next", Icons.Queue)
+        header(t, "Up next")
         if (keys.isEmpty()) hint(t, "empty", "Nothing queued")
         itemsIndexed(keys, key = { i, k -> "q:$i:$k" }) { index, key ->
             val track = library.byKey[key]

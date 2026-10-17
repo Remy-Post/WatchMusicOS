@@ -15,6 +15,7 @@ import androidx.core.content.edit
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import com.example.music.appGraph
 import com.example.music.playback.PlayerConnection
+import com.example.music.presentation.player.BrightnessController
 import com.google.android.horologist.audio.ui.VolumeViewModel
 
 class MainActivity : ComponentActivity() {
@@ -22,6 +23,25 @@ class MainActivity : ComponentActivity() {
     private lateinit var player: PlayerConnection
     private val volumeViewModel: VolumeViewModel by viewModels { VolumeViewModel.Factory }
     private val prefs by lazy { getSharedPreferences("app", MODE_PRIVATE) }
+
+    /** Brightness for this app's window, set by sliding along the player's right edge. */
+    private val brightness by lazy {
+        val saved = prefs.getFloat(KEY_BRIGHTNESS, -1f)
+        val initial = if (saved > 0f) {
+            saved
+        } else {
+            runCatching { Settings.System.getInt(contentResolver, Settings.System.SCREEN_BRIGHTNESS) / 255f }
+                .getOrDefault(0.6f)
+        }
+        BrightnessController(initial) { level ->
+            applyBrightness(level)
+            prefs.edit { putFloat(KEY_BRIGHTNESS, level) }
+        }
+    }
+
+    private fun applyBrightness(level: Float) {
+        window.attributes = window.attributes.apply { screenBrightness = level }
+    }
 
     private val accessRequest =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
@@ -40,11 +60,13 @@ class MainActivity : ComponentActivity() {
         installSplashScreen()
         super.onCreate(savedInstanceState)
         player = PlayerConnection(this)
+        prefs.getFloat(KEY_BRIGHTNESS, -1f).takeIf { it > 0f }?.let(::applyBrightness)
 
         setContent {
             WatchMusicApp(
                 player = player,
                 volumeViewModel = volumeViewModel,
+                brightness = brightness,
                 onRequestAccess = ::requestMusicAccess,
             )
         }
@@ -83,5 +105,6 @@ class MainActivity : ComponentActivity() {
     private companion object {
         const val KEY_ASKED = "asked_music_access"
         const val KEY_DENIALS = "music_access_denials"
+        const val KEY_BRIGHTNESS = "window_brightness"
     }
 }

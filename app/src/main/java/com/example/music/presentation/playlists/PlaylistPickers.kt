@@ -6,7 +6,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.wear.compose.foundation.lazy.items
@@ -40,21 +39,20 @@ fun AddToPlaylistScreen(trackKey: String, onDone: () -> Unit) {
     ListScaffold(
         edgeButton = {
             EdgeButton(onClick = create) {
-                Icon(painterResource(Icons.Add), contentDescription = "New playlist", modifier = Modifier.size(24.dp))
+                Icon(Icons.Add, contentDescription = "New playlist", modifier = Modifier.size(22.dp))
             }
         },
     ) { t ->
-        header(t, "Add to playlist", Icons.PlaylistAdd)
+        header(t, "Add to playlist")
         track?.let { hint(t, "song", it.title) }
         items(playlists, key = { it.id }) { playlist ->
             val keys = LibraryLogic.resolve(playlist, library.byKey, library.tracks).map { it.key }
             val inside = trackKey in keys
             with(t) {
                 NavChip(
-                    icon = if (inside) Icons.PlaylistAdded else Icons.Queue,
                     title = playlist.name,
                     subtitle = if (inside) "Added" else songCount(keys.size),
-                    iconTint = if (inside) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                    selected = inside,
                     onClick = {
                         if (inside) graph.library.removeFromPlaylist(playlist.id, trackKey)
                         else graph.library.addToPlaylist(playlist.id, listOf(trackKey))
@@ -97,7 +95,7 @@ fun AddSongsScreen(playlistId: String) {
                     transformation = surface(),
                     trailing = {
                         Icon(
-                            painterResource(if (selected) Icons.Check else Icons.Add),
+                            if (selected) Icons.Check else Icons.Add,
                             contentDescription = if (selected) "Selected" else "Not selected",
                             tint = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.size(20.dp),

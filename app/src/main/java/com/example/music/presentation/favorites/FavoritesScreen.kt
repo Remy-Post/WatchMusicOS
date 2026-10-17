@@ -9,7 +9,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.wear.compose.foundation.lazy.items
@@ -55,14 +54,14 @@ fun FavoritesScreen(player: PlayerConnection, onPlayed: () -> Unit) {
         edgeButton = if (playable.isNotEmpty()) {
             {
                 EdgeButton(onClick = { playFrom(null, shuffle = true) }) {
-                    Icon(painterResource(Icons.Shuffle), contentDescription = "Shuffle favorites", modifier = Modifier.size(22.dp))
+                    Icon(Icons.Shuffle, contentDescription = "Shuffle favorites", modifier = Modifier.size(22.dp))
                 }
             }
         } else {
             null
         },
     ) { t ->
-        header(t, "Favorites", Icons.Heart, WatchColors.Heart)
+        header(t, "Favorites")
         if (favorites.isEmpty()) {
             emptyState(t, "favorites", Icons.HeartOutline, "No favorites yet. Tap the heart on the player to add a song here.", WatchColors.Heart)
         }
@@ -90,7 +89,7 @@ fun FavoritesScreen(player: PlayerConnection, onPlayed: () -> Unit) {
     AlertDialog(
         visible = pendingRemoval != null,
         onDismissRequest = { pendingRemoval = null },
-        icon = { Icon(painterResource(Icons.HeartOutline), null, tint = WatchColors.Heart) },
+        icon = { Icon(Icons.HeartOutline, null, tint = WatchColors.Heart) },
         title = { Text("Remove from Favorites?") },
         text = { Text(pendingRemoval?.title.orEmpty()) },
         confirmButton = {

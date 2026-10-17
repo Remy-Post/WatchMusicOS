@@ -1,50 +1,75 @@
 package com.example.music.presentation.components
 
-import androidx.annotation.DrawableRes
-import com.composables.icons.materialsymbols.rounded.R as Rounded
-import com.composables.icons.materialsymbols.roundedfilled.R as Filled
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.vectorResource
+import com.adamglin.PhosphorIcons
+import com.adamglin.phosphoricons.Fill
+import com.adamglin.phosphoricons.Regular
+import com.adamglin.phosphoricons.fill.Heart
+import com.adamglin.phosphoricons.fill.Pause
+import com.adamglin.phosphoricons.fill.Play
+import com.adamglin.phosphoricons.fill.SkipBack
+import com.adamglin.phosphoricons.fill.SkipForward
+import com.adamglin.phosphoricons.regular.Check
+import com.adamglin.phosphoricons.regular.Equalizer
+import com.adamglin.phosphoricons.regular.Gauge
+import com.adamglin.phosphoricons.regular.Headphones
+import com.adamglin.phosphoricons.regular.ListPlus
+import com.adamglin.phosphoricons.regular.Minus
+import com.adamglin.phosphoricons.regular.MusicNoteSimple
+import com.adamglin.phosphoricons.regular.PencilSimple
+import com.adamglin.phosphoricons.regular.Plus
+import com.adamglin.phosphoricons.regular.Queue
+import com.adamglin.phosphoricons.regular.Repeat
+import com.adamglin.phosphoricons.regular.RepeatOnce
+import com.adamglin.phosphoricons.regular.Shuffle
+import com.adamglin.phosphoricons.regular.SpeakerHifi
+import com.adamglin.phosphoricons.regular.SpeakerHigh
+import com.adamglin.phosphoricons.regular.Timer
+import com.adamglin.phosphoricons.regular.Trash
+import com.adamglin.phosphoricons.regular.Watch
+import com.composables.icons.materialsymbols.roundedfilled.R as Symbols
+import com.adamglin.phosphoricons.regular.Heart as HeartOutlineGlyph
 
 /**
- * Google's Material Symbols (Rounded), from the `com.composables` icon packages. The rounded
- * terminals sit closest to One UI's icon language. Filled glyphs are used for transport controls
- * and active states, outlined ones for secondary actions, as One UI does.
+ * Every icon in the app, from Phosphor (MIT): the fill weight for transport controls and the
+ * active heart, the regular weight for everything else. Phosphor has no earbuds glyph and no
+ * numbered skip arrows, so those three come from Google's Material Symbols.
  */
 object Icons {
-    @DrawableRes val Play = Filled.drawable.materialsymbols_ic_play_arrow_rounded_filled
-    @DrawableRes val Pause = Filled.drawable.materialsymbols_ic_pause_rounded_filled
-    @DrawableRes val SkipNext = Filled.drawable.materialsymbols_ic_skip_next_rounded_filled
-    @DrawableRes val SkipPrevious = Filled.drawable.materialsymbols_ic_skip_previous_rounded_filled
-    @DrawableRes val Heart = Filled.drawable.materialsymbols_ic_favorite_rounded_filled
-    @DrawableRes val HeartOutline = Rounded.drawable.materialsymbols_ic_favorite_rounded
-    @DrawableRes val Volume = Rounded.drawable.materialsymbols_ic_volume_up_rounded
-    @DrawableRes val VolumeDown = Rounded.drawable.materialsymbols_ic_volume_down_rounded
-    @DrawableRes val VolumeOff = Rounded.drawable.materialsymbols_ic_volume_off_rounded
-    @DrawableRes val More = Rounded.drawable.materialsymbols_ic_more_horiz_rounded
-    @DrawableRes val Queue = Rounded.drawable.materialsymbols_ic_queue_music_rounded
-    @DrawableRes val PlaylistAdd = Rounded.drawable.materialsymbols_ic_playlist_add_rounded
-    @DrawableRes val PlaylistAdded = Rounded.drawable.materialsymbols_ic_playlist_add_check_rounded
-    @DrawableRes val PlaylistPlay = Rounded.drawable.materialsymbols_ic_playlist_play_rounded
-    @DrawableRes val Add = Rounded.drawable.materialsymbols_ic_add_rounded
-    @DrawableRes val Remove = Rounded.drawable.materialsymbols_ic_remove_rounded
-    @DrawableRes val Shuffle = Rounded.drawable.materialsymbols_ic_shuffle_rounded
-    @DrawableRes val ShuffleOn = Rounded.drawable.materialsymbols_ic_shuffle_on_rounded
-    @DrawableRes val Repeat = Rounded.drawable.materialsymbols_ic_repeat_rounded
-    @DrawableRes val RepeatOn = Rounded.drawable.materialsymbols_ic_repeat_on_rounded
-    @DrawableRes val RepeatOneOn = Rounded.drawable.materialsymbols_ic_repeat_one_on_rounded
-    @DrawableRes val MusicNote = Filled.drawable.materialsymbols_ic_music_note_rounded_filled
-    @DrawableRes val Library = Rounded.drawable.materialsymbols_ic_library_music_rounded
-    @DrawableRes val Watch = Rounded.drawable.materialsymbols_ic_watch_rounded
-    @DrawableRes val Headphones = Rounded.drawable.materialsymbols_ic_headphones_rounded
-    @DrawableRes val Delete = Rounded.drawable.materialsymbols_ic_delete_rounded
-    @DrawableRes val Check = Rounded.drawable.materialsymbols_ic_check_rounded
-    @DrawableRes val Recent = Rounded.drawable.materialsymbols_ic_schedule_rounded
-    @DrawableRes val Edit = Rounded.drawable.materialsymbols_ic_edit_rounded
-    @DrawableRes val Folder = Rounded.drawable.materialsymbols_ic_folder_rounded
-    @DrawableRes val Refresh = Rounded.drawable.materialsymbols_ic_refresh_rounded
-    @DrawableRes val Unlock = Rounded.drawable.materialsymbols_ic_lock_open_rounded
-    @DrawableRes val Podcasts = Rounded.drawable.materialsymbols_ic_podcasts_rounded
-    @DrawableRes val Replay10 = Filled.drawable.materialsymbols_ic_replay_10_rounded_filled
-    @DrawableRes val Forward30 = Filled.drawable.materialsymbols_ic_forward_30_rounded_filled
-    @DrawableRes val Speed = Rounded.drawable.materialsymbols_ic_speed_rounded
-    @DrawableRes val Equalizer = Rounded.drawable.materialsymbols_ic_equalizer_rounded
+    val Play: ImageVector get() = PhosphorIcons.Fill.Play
+    val Pause: ImageVector get() = PhosphorIcons.Fill.Pause
+    val SkipNext: ImageVector get() = PhosphorIcons.Fill.SkipForward
+    val SkipPrevious: ImageVector get() = PhosphorIcons.Fill.SkipBack
+    val Heart: ImageVector get() = PhosphorIcons.Fill.Heart
+    val HeartOutline: ImageVector get() = PhosphorIcons.Regular.HeartOutlineGlyph
+    val Volume: ImageVector get() = PhosphorIcons.Regular.SpeakerHigh
+    val Shuffle: ImageVector get() = PhosphorIcons.Regular.Shuffle
+    val Repeat: ImageVector get() = PhosphorIcons.Regular.Repeat
+    val RepeatOne: ImageVector get() = PhosphorIcons.Regular.RepeatOnce
+    val Queue: ImageVector get() = PhosphorIcons.Regular.Queue
+    val PlaylistAdd: ImageVector get() = PhosphorIcons.Regular.ListPlus
+    val Add: ImageVector get() = PhosphorIcons.Regular.Plus
+    val Remove: ImageVector get() = PhosphorIcons.Regular.Minus
+    val Check: ImageVector get() = PhosphorIcons.Regular.Check
+    val Edit: ImageVector get() = PhosphorIcons.Regular.PencilSimple
+    val Delete: ImageVector get() = PhosphorIcons.Regular.Trash
+    val Equalizer: ImageVector get() = PhosphorIcons.Regular.Equalizer
+    val SleepTimer: ImageVector get() = PhosphorIcons.Regular.Timer
+    val Speed: ImageVector get() = PhosphorIcons.Regular.Gauge
+    val MusicNote: ImageVector get() = PhosphorIcons.Regular.MusicNoteSimple
+
+    // Output devices.
+    val Watch: ImageVector get() = PhosphorIcons.Regular.Watch
+    val Headphones: ImageVector get() = PhosphorIcons.Regular.Headphones
+    val Speaker: ImageVector get() = PhosphorIcons.Regular.SpeakerHifi
+    val Earbuds: ImageVector
+        @Composable get() = ImageVector.vectorResource(Symbols.drawable.materialsymbols_ic_earbuds_rounded_filled)
+
+    // Podcast skips.
+    val Back10: ImageVector
+        @Composable get() = ImageVector.vectorResource(Symbols.drawable.materialsymbols_ic_replay_10_rounded_filled)
+    val Forward30: ImageVector
+        @Composable get() = ImageVector.vectorResource(Symbols.drawable.materialsymbols_ic_forward_30_rounded_filled)
 }

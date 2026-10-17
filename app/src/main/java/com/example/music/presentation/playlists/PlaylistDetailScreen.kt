@@ -8,7 +8,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.wear.compose.foundation.lazy.itemsIndexed
 import androidx.wear.compose.material3.AlertDialog
@@ -48,7 +47,7 @@ fun PlaylistDetailScreen(
     val favorites by graph.library.favorites.collectAsStateWithLifecycle()
     val now by player.state.collectAsStateWithLifecycle()
 
-    val progress by graph.progress.positions.collectAsStateWithLifecycle()
+    val progress by graph.progress.entries.collectAsStateWithLifecycle()
 
     val smart = SmartList.fromId(playlistId)
     val show = SmartList.showFromId(playlistId)
@@ -77,7 +76,7 @@ fun PlaylistDetailScreen(
     }
 
     ListScaffold { t ->
-        header(t, title, if (show != null) Icons.Podcasts else null)
+        header(t, title)
         hint(t, "count", if (show != null) episodeCount(tracks.size) else songCount(tracks.size))
 
         if (tracks.isNotEmpty()) {
@@ -88,7 +87,7 @@ fun PlaylistDetailScreen(
                         onClick = { play(tracks.indices.random(), shuffle = true) },
                         modifier = Modifier.fillMaxWidth().morph(this@item),
                         transformation = surface(),
-                        icon = { Icon(painterResource(Icons.Shuffle), contentDescription = null) },
+                        icon = { Icon(Icons.Shuffle, contentDescription = null) },
                         label = { Text("Shuffle") },
                     )
                 }
@@ -100,7 +99,10 @@ fun PlaylistDetailScreen(
                 TrackChip(
                     track = track,
                     title = track.title,
-                    subtitle = if (track.isPodcast) episodeSubtitle(track, progress[track.key] ?: 0L) else track.artist,
+                    subtitle = if (track.isPodcast) episodeSubtitle(track, progress[track.key]?.positionMs ?: 0L) else track.artist,
+                    progress = progress[track.key]?.let { p ->
+                        if (track.isPodcast && track.durationMs > 0) p.positionMs.toFloat() / track.durationMs else null
+                    },
                     isCurrent = track.key == now.trackKey,
                     // Episode titles are long; give them two lines.
                     titleLines = if (track.isPodcast) 2 else 1,
@@ -127,20 +129,27 @@ fun PlaylistDetailScreen(
         if (editable) {
             item(key = "add") {
                 with(t) {
-                    NavChip(Icons.PlaylistAdd, "Add songs", null, { onAddSongs(playlistId) },
-                        Modifier.fillMaxWidth().morph(this@item), transformation = surface())
+                    NavChip(
+                        title = "Add songs", subtitle = null, onClick = { onAddSongs(playlistId) },
+                        modifier = Modifier.fillMaxWidth().morph(this@item), icon = Icons.PlaylistAdd, transformation = surface(),
+                    )
                 }
             }
             item(key = "rename") {
                 with(t) {
-                    NavChip(Icons.Edit, "Rename", null, rename,
-                        Modifier.fillMaxWidth().morph(this@item), transformation = surface())
+                    NavChip(
+                        title = "Rename", subtitle = null, onClick = rename,
+                        modifier = Modifier.fillMaxWidth().morph(this@item), icon = Icons.Edit, transformation = surface(),
+                    )
                 }
             }
             item(key = "delete") {
                 with(t) {
-                    NavChip(Icons.Delete, "Delete playlist", null, { confirmDelete = true },
-                        Modifier.fillMaxWidth().morph(this@item), iconTint = WatchColors.Heart, transformation = surface())
+                    NavChip(
+                        title = "Delete playlist", subtitle = null, onClick = { confirmDelete = true },
+                        modifier = Modifier.fillMaxWidth().morph(this@item), icon = Icons.Delete,
+                        iconTint = WatchColors.Heart, transformation = surface(),
+                    )
                 }
             }
         }
@@ -149,7 +158,7 @@ fun PlaylistDetailScreen(
     AlertDialog(
         visible = pendingRemoval != null,
         onDismissRequest = { pendingRemoval = null },
-        icon = { Icon(painterResource(Icons.Remove), null) },
+        icon = { Icon(Icons.Remove, null) },
         title = { Text("Remove from $title?") },
         text = { Text(pendingRemoval?.title.orEmpty()) },
         confirmButton = {
@@ -163,7 +172,7 @@ fun PlaylistDetailScreen(
     AlertDialog(
         visible = confirmDelete,
         onDismissRequest = { confirmDelete = false },
-        icon = { Icon(painterResource(Icons.Delete), null, tint = WatchColors.Heart) },
+        icon = { Icon(Icons.Delete, null, tint = WatchColors.Heart) },
         title = { Text("Delete $title?") },
         text = { Text("Songs stay on your watch.") },
         confirmButton = {

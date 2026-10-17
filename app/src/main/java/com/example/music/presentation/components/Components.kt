@@ -1,11 +1,15 @@
 package com.example.music.presentation.components
 
-import androidx.annotation.DrawableRes
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.size
@@ -23,9 +27,9 @@ import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
@@ -119,7 +123,7 @@ fun CoverThumb(track: Track?, size: Dp, modifier: Modifier = Modifier, monogram:
             }
         } else {
             Icon(
-                painterResource(Icons.MusicNote),
+                Icons.MusicNote,
                 contentDescription = null,
                 tint = WatchColors.OnSurfaceVariant,
                 modifier = Modifier.size(size * 0.5f),
@@ -128,7 +132,7 @@ fun CoverThumb(track: Track?, size: Dp, modifier: Modifier = Modifier, monogram:
     }
 }
 
-/** Song row used in every list: cover, title, artist. */
+/** Song or episode row: cover, title, subtitle, and an optional listening-progress line. */
 @Composable
 fun TrackChip(
     track: Track?,
@@ -141,6 +145,8 @@ fun TrackChip(
     enabled: Boolean = true,
     transformation: SurfaceTransformation? = null,
     titleLines: Int = 1,
+    /** 0..1 when an episode is partly played. */
+    progress: Float? = null,
     trailing: (@Composable () -> Unit)? = null,
 ) {
     Button(
@@ -149,12 +155,21 @@ fun TrackChip(
         enabled = enabled,
         modifier = modifier.fillMaxWidth(),
         transformation = transformation,
-        colors = ButtonDefaults.filledTonalButtonColors(
-            containerColor = if (isCurrent) MaterialTheme.colorScheme.primary.copy(alpha = 0.22f) else WatchColors.Surface,
-        ),
+        colors = ButtonDefaults.filledTonalButtonColors(containerColor = WatchColors.Surface),
         icon = { CoverThumb(track, 32.dp) },
         secondaryLabel = {
-            Text(subtitle, maxLines = 1, overflow = TextOverflow.Ellipsis, color = WatchColors.OnSurfaceVariant)
+            Column(Modifier.weight(1f)) {
+                Text(subtitle, maxLines = 1, overflow = TextOverflow.Ellipsis, color = WatchColors.OnSurfaceVariant)
+                if (progress != null) {
+                    Spacer(Modifier.height(4.dp))
+                    Box(Modifier.fillMaxWidth().height(2.dp).clip(CircleShape).background(WatchColors.RingTrack)) {
+                        Box(
+                            Modifier.fillMaxWidth(progress.coerceIn(0f, 1f)).fillMaxHeight()
+                                .background(MaterialTheme.colorScheme.primary),
+                        )
+                    }
+                }
+            }
         },
         label = {
             Text(
@@ -169,36 +184,51 @@ fun TrackChip(
     )
 }
 
-/** Navigation row (playlist, smart list, action) with a round leading icon. */
+/**
+ * Row for folders, playlists and settings. Shows album art when [cover] is given, a plain
+ * regular-weight icon when [icon] is given, or text alone. [selected] adds a check.
+ */
 @Composable
 fun NavChip(
-    @DrawableRes icon: Int,
     title: String,
     subtitle: String?,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    icon: ImageVector? = null,
+    cover: Track? = null,
+    coverMonogram: String? = null,
+    iconTint: Color = WatchColors.OnSurfaceVariant,
+    selected: Boolean = false,
     onLongClick: (() -> Unit)? = null,
-    iconTint: Color = MaterialTheme.colorScheme.primary,
     transformation: SurfaceTransformation? = null,
 ) {
+    val leading: (@Composable BoxScope.() -> Unit)? = when {
+        cover != null || coverMonogram != null -> ({ CoverThumb(cover, 32.dp, monogram = coverMonogram) })
+        icon != null -> ({ Icon(icon, contentDescription = null, tint = iconTint, modifier = Modifier.size(22.dp)) })
+        else -> null
+    }
     Button(
         onClick = onClick,
         onLongClick = onLongClick,
         modifier = modifier.fillMaxWidth(),
         transformation = transformation,
         colors = ButtonDefaults.filledTonalButtonColors(containerColor = WatchColors.Surface),
-        icon = {
-            Box(
-                Modifier.size(32.dp).clip(CircleShape).background(iconTint.copy(alpha = 0.18f)),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(painterResource(icon), contentDescription = null, tint = iconTint, modifier = Modifier.size(18.dp))
-            }
-        },
+        icon = leading,
         secondaryLabel = subtitle?.let {
             { Text(it, maxLines = 1, overflow = TextOverflow.Ellipsis, color = WatchColors.OnSurfaceVariant) }
         },
-        label = { Text(title, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+        label = {
+            Text(
+                title,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                color = if (selected) MaterialTheme.colorScheme.primary else WatchColors.OnSurface,
+                modifier = Modifier.weight(1f),
+            )
+            if (selected) {
+                Icon(Icons.Check, contentDescription = "Selected", tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
+            }
+        },
     )
 }
 
@@ -228,10 +258,8 @@ fun episodeSubtitle(track: Track, resumeMs: Long): String {
             day.format(java.time.format.DateTimeFormatter.ofPattern(pattern))
         }.getOrNull()
     }
-    val length = when {
-        resumeMs > 0 && track.durationMs > resumeMs -> formatDuration(track.durationMs - resumeMs) + " left"
-        track.durationMs > 0 -> formatDuration(track.durationMs)
-        else -> null
-    }
-    return listOfNotNull(date, length).joinToString(" · ").ifEmpty { track.show }
+    // Partly played: the time left is what matters, so show only that.
+    if (resumeMs > 0 && track.durationMs > resumeMs) return formatDuration(track.durationMs - resumeMs) + " left"
+    val length = track.durationMs.takeIf { it > 0 }?.let(::formatDuration)
+    return listOfNotNull(date, length).joinToString(" \u00B7 ").ifEmpty { track.show }
 }

@@ -1,19 +1,16 @@
 package com.example.music.presentation.components
 
-import androidx.annotation.DrawableRes
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.wear.compose.foundation.lazy.TransformingLazyColumn
@@ -60,37 +57,21 @@ fun ListScaffold(
     }
 }
 
-/** Screen title with an optional leading glyph. */
-fun TransformingLazyColumnScope.header(
-    transform: ListTransform,
-    title: String,
-    @DrawableRes icon: Int? = null,
-    iconTint: Color = Color.Unspecified,
-) {
+/** Screen title. Text only: no decorative glyphs. */
+fun TransformingLazyColumnScope.header(transform: ListTransform, title: String) {
     item(key = "header:$title") {
         with(transform) {
             ListHeader(
                 modifier = Modifier.fillMaxWidth().morph(this@item),
                 transformation = surface(),
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    if (icon != null) {
-                        Icon(
-                            painterResource(icon),
-                            contentDescription = null,
-                            tint = if (iconTint == Color.Unspecified) MaterialTheme.colorScheme.primary else iconTint,
-                            modifier = Modifier.size(18.dp),
-                        )
-                        Spacer(Modifier.width(6.dp))
-                    }
-                    Text(title, style = MaterialTheme.typography.titleMedium)
-                }
+                Text(title, style = MaterialTheme.typography.titleMedium, maxLines = 2, textAlign = TextAlign.Center)
             }
         }
     }
 }
 
-/** Small section label inside a list ("Today", "This week", …). */
+/** Small section label inside a list ("Today", "This week"). */
 fun TransformingLazyColumnScope.sectionLabel(transform: ListTransform, key: String, text: String) {
     item(key = "section:$key") {
         with(transform) {
@@ -124,7 +105,7 @@ fun TransformingLazyColumnScope.hint(transform: ListTransform, key: String, text
 fun TransformingLazyColumnScope.emptyState(
     transform: ListTransform,
     key: String,
-    @DrawableRes icon: Int,
+    icon: ImageVector,
     text: String,
     iconTint: Color = WatchColors.OnSurfaceVariant,
 ) {
@@ -134,7 +115,7 @@ fun TransformingLazyColumnScope.emptyState(
                 Modifier.fillMaxWidth().morph(this@item).padding(vertical = 8.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
-                Icon(painterResource(icon), contentDescription = null, tint = iconTint, modifier = Modifier.size(32.dp))
+                Icon(icon, contentDescription = null, tint = iconTint, modifier = Modifier.size(28.dp))
                 Spacer(Modifier.height(6.dp))
                 Text(
                     text,
