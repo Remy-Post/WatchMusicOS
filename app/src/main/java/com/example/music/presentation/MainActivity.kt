@@ -24,7 +24,17 @@ class MainActivity : ComponentActivity() {
     private val prefs by lazy { getSharedPreferences("app", MODE_PRIVATE) }
 
     private val accessRequest =
-        registerForActivityResult(ActivityResultContracts.RequestPermission()) { appGraph.tracks.refresh() }
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+            appGraph.tracks.refresh()
+            // Android stops showing the dialog after it was declined twice; fall back to the
+            // app's settings page so the user can still switch it on.
+            if (!granted && !shouldShowRequestPermissionRationale(Manifest.permission.READ_MEDIA_AUDIO) &&
+                prefs.getInt(KEY_DENIALS, 0) >= 1
+            ) {
+                openAppSettings()
+            }
+            if (!granted) prefs.edit { putInt(KEY_DENIALS, prefs.getInt(KEY_DENIALS, 0) + 1) }
+        }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         installSplashScreen()
@@ -58,20 +68,20 @@ class MainActivity : ComponentActivity() {
         ContextCompat.checkSelfPermission(this, Manifest.permission.READ_MEDIA_AUDIO) ==
             PackageManager.PERMISSION_GRANTED
 
+    /** Always tries the system dialog first; it may have been dismissed rather than declined. */
     private fun requestMusicAccess() {
-        val askedBefore = prefs.getBoolean(KEY_ASKED, false)
-        if (askedBefore && !shouldShowRequestPermissionRationale(Manifest.permission.READ_MEDIA_AUDIO)) {
-            // The system won't show the dialog again; send the user to the app's settings page.
-            startActivity(
-                Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.fromParts("package", packageName, null)),
-            )
-            return
-        }
         prefs.edit { putBoolean(KEY_ASKED, true) }
         accessRequest.launch(Manifest.permission.READ_MEDIA_AUDIO)
     }
 
+    private fun openAppSettings() {
+        startActivity(
+            Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.fromParts("package", packageName, null)),
+        )
+    }
+
     private companion object {
         const val KEY_ASKED = "asked_music_access"
+        const val KEY_DENIALS = "music_access_denials"
     }
 }

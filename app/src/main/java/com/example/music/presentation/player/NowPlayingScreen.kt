@@ -170,13 +170,19 @@ fun NowPlayingScreen(
                         Text(
                             text = when {
                                 state.hasMedia -> title
-                                noMusic -> "No music on watch"
+                                noMusic -> "No music yet"
                                 else -> "Nothing playing"
                             },
                             style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold, fontSize = 17.sp),
                             maxLines = 1,
                             textAlign = TextAlign.Center,
-                            modifier = Modifier.basicMarquee(iterations = Int.MAX_VALUE, initialDelayMillis = 1500),
+                            overflow = TextOverflow.Ellipsis,
+                            // Long song titles scroll; the empty-state text never needs to.
+                            modifier = if (state.hasMedia) {
+                                Modifier.basicMarquee(iterations = Int.MAX_VALUE, initialDelayMillis = 1500)
+                            } else {
+                                Modifier
+                            },
                         )
                         Text(
                             text = when {

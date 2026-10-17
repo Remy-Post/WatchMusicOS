@@ -28,6 +28,7 @@ import re
 import shutil
 import subprocess
 import sys
+import time
 from pathlib import Path
 
 MUSIC_ROOT = Path.home() / "Music"
@@ -47,7 +48,7 @@ PODCAST_FOLDERS = [
 AUDIO_EXT = {".mp3", ".m4a", ".aac", ".flac", ".ogg", ".opus", ".wav"}
 PODCAST_BITRATE = "48k"
 # Leave room on the watch for the OS, apps and updates.
-RESERVE_BYTES = 3 * 1024**3
+RESERVE_BYTES = 2 * 1024**3
 
 DATE_RE = re.compile(r"(\d{4}-\d{2}-\d{2})")
 
@@ -214,8 +215,18 @@ def prepare(jobs: int):
 
 # ---------------------------------------------------------------- watch side
 
-def adb(serial, *args, check=True, capture=True):
-    return subprocess.run(["adb", "-s", serial, *args], check=check, capture_output=capture, text=True)
+def adb(serial, *args, check=True, capture=True, retries=6):
+    """Runs an adb command, reconnecting if the watch dropped off Wi-Fi (it does when its screen sleeps)."""
+    for attempt in range(retries):
+        result = subprocess.run(["adb", "-s", serial, *args], capture_output=capture, text=True)
+        if result.returncode == 0 or not check:
+            return result
+        if attempt < retries - 1:
+            time.sleep(3 + attempt * 2)
+            if ":" in serial:
+                subprocess.run(["adb", "connect", serial], capture_output=True)
+            subprocess.run(["adb", "-s", serial, "shell", "input", "keyevent", "KEYCODE_WAKEUP"], capture_output=True)
+    raise subprocess.CalledProcessError(result.returncode, result.args, result.stdout, result.stderr)
 
 
 def watch_free_bytes(serial) -> int:
@@ -293,11 +304,18 @@ def plan(serial):
 def push(serial):
     chosen = plan(serial)
     todo = [c for c in chosen if not c[4]]
+    made = set()
+    started, sent = time.time(), 0
     for i, (local, remote, size, group, _) in enumerate(todo, 1):
-        adb(serial, "shell", "mkdir", "-p", str(Path(remote).parent))
+        parent = str(Path(remote).parent)
+        if parent not in made:
+            adb(serial, "shell", f"mkdir -p '{parent}'")
+            made.add(parent)
         adb(serial, "push", str(local), remote)
+        sent += size
         if i % 20 == 0 or i == len(todo):
-            print(f"  copied {i}/{len(todo)}", flush=True)
+            rate = sent / max(time.time() - started, 1) / 1024**2
+            print(f"  copied {i}/{len(todo)}  {fmt(sent)}  {rate:.1f} MB/s", flush=True)
     # Files written through adb are indexed by the media provider as they land; a volume scan
     # makes sure nothing is missed.
     adb(serial, "shell", "content", "call", "--method", "scan_volume", "--uri", "content://media",
