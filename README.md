@@ -21,7 +21,12 @@ no phone, no network permission.
   newest first, with dates and time left. Episodes resume where you left off. While one plays,
   the player swaps previous/next for back 10 s / forward 30 s, and the options sheet adds
   playback speed (1× to 2×).
-- **One-tap favorites.** The ♥ on the player saves the song to Favorites instantly, and the system
+- **Options sheet (⋯).** Switch playlist (Music, Juice WRLD and your playlists, Favorites,
+  Podcasts), shuffle, repeat, playback speed for podcasts, equalizer, add to playlist, up
+  next and audio output. Works whether or not something is playing.
+- **Equalizer.** Android's built-in equalizer on the player, with presets (Flat, Bass boost,
+  Hip-hop, Vocal, Spoken word, Treble) and a slider per band. Settings are remembered.
+- **One-tap favorites.** The heart on the player saves the song to Favorites instantly, and the system
   media controls get the same heart button.
 - **Playlists.** Create them on the watch (keyboard, handwriting or voice), add/remove songs,
   rename, delete. Preconfigured playlists ship inside the app and install themselves on first launch.
